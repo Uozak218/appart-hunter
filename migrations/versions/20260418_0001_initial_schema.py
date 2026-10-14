@@ -21,7 +21,13 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE EXTENSION IF NOT EXISTS postgis")
+    # PostGIS is optional: nothing queries geometry yet, so skip it on servers
+    # that don't ship the extension (e.g. a plain Homebrew Postgres).
+    op.execute(
+        "DO $$ BEGIN "
+        "IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'postgis') "
+        "THEN CREATE EXTENSION IF NOT EXISTS postgis; END IF; END $$"
+    )
 
     listing_status = sa.Enum(
         "new", "scored", "notified", "filtered_out", "gone", name="listing_status"
