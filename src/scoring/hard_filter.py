@@ -39,6 +39,9 @@ def hard_prefilter(listing: Listing, criteria: SearchCriteria) -> tuple[bool | N
         postcode=listing.postal_code,
         lat=listing.latitude,
         lon=listing.longitude,
+        text=" ".join(
+            filter(None, [listing.title, listing.description, getattr(listing, "address", None)])
+        ),
     ):
         return False, [f"postcode {listing.postal_code} outside target zones (no line-14 match)"]
 

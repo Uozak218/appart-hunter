@@ -1,8 +1,13 @@
 """GLF (Guy Loïck Fouchet) scraper — Netty.immo-powered Paris agency.
 
-Small agency site (~70 listings). Server-rendered HTML, no anti-bot.
+Small agency site (~50 rentals). Server-rendered HTML, no anti-bot.
 Listings at ``/services/devenir-locataire?page=N``, details at ``/flats/{id}``.
 Photos on ``img.netty.immo``.
+
+The site has no location filter: we walk the whole rental stock and tag each
+entry with the postcode shown on its card ("92100 - Boulogne-Billancourt"),
+so the base zone pre-filter drops out-of-zone flats before any detail fetch.
+2026-10-14: stock is Paris + Boulogne only — nothing in the 92-nord / 93 towns.
 """
 
 from __future__ import annotations
@@ -26,6 +31,9 @@ GLF_BASE = "https://www.glf.eu"
 GLF_LISTING_URL = f"{GLF_BASE}/services/devenir-locataire"
 
 _FLAT_RE = re.compile(r"/flats/(\d+)")
+# Any French postcode (01xxx–98xxx); the look-behind skips refs like "A-05073".
+_POSTCODE_RE = re.compile(r"(?<![\d-])((?:0[1-9]|[1-8]\d|9[0-8])\d{3})(?!\d)")
+_CARD_POSTCODE_RE = re.compile(r"\b(\d{5})\s*-\s*[A-Za-zÀ-ÿ]")
 
 
 class GlfScraper(BaseScraper):
@@ -58,7 +66,11 @@ class GlfScraper(BaseScraper):
                     continue
                 seen.add(ext_id)
                 full_url = href if href.startswith("http") else f"{GLF_BASE}{href}"
-                entries.append({"external_id": ext_id, "url": full_url})
+                entry = {"external_id": ext_id, "url": full_url}
+                pc = card_postcode(a)
+                if pc:
+                    entry["postal_code"] = pc
+                entries.append(entry)
                 page_count += 1
 
             if page_count == 0:
@@ -89,8 +101,9 @@ class GlfScraper(BaseScraper):
         if rooms is None and re.search(r"\bstudio\b", title, re.I):
             rooms = 1
 
-        postcode_m = re.search(r"\b(75\d{3})\b", body)
-        postcode = postcode_m.group(1) if postcode_m else None
+        # Card postcode first; the body also carries the agency address (75003).
+        postcode_m = _POSTCODE_RE.search(body)
+        postcode = entry.get("postal_code") or (postcode_m.group(1) if postcode_m else None)
 
         photos: list[str] = []
         seen_p: set[str] = set()
@@ -121,6 +134,21 @@ class GlfScraper(BaseScraper):
             photo_urls=photos[:15],
             poster_type="agency",
         )
+
+
+def card_postcode(anchor) -> str | None:
+    """Postcode from the listing card wrapping ``anchor`` ("75014 - Paris")."""
+    node = anchor
+    for _ in range(6):
+        m = _CARD_POSTCODE_RE.search(node.get_text(" ", strip=True))
+        if m:
+            return m.group(1)
+        if node.parent is None:
+            break
+        node = node.parent
+        if len(node.get_text(" ", strip=True)) > 400:
+            break
+    return None
 
 
 async def _fetch(url: str) -> str:

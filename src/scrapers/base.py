@@ -48,7 +48,7 @@ class ScrapeOutcome:
     errors: list[str] = field(default_factory=list)
 
 
-_POSTCODE_RE = re.compile(r"\b(75\d{3})\b")
+_POSTCODE_RE = re.compile(r"\b((?:75|77|78|9[1-5])\d{3})\b")
 
 
 class BaseScraper(ABC):

@@ -16,6 +16,7 @@ import json
 import re
 from datetime import datetime
 from typing import Any
+from urllib.parse import quote
 
 from playwright.async_api import Page
 
@@ -35,18 +36,61 @@ LBC_LISTING_URL = (
     # ads are already covered by the agency scrapers + bienici), and fewer ads
     # = fewer Scrapfly detail calls per poll.
     "category=10&real_estate_type=2&owner_type=private&furnished=2&"
-    "price=min-{max_price}&square=40-max&locations={locations}&sort=time&order=desc"
+    "price=min-{max_price}&rooms={rooms}&square={min_surface}-max&"
+    "locations={locations}&sort=time&order=desc"
 )
 
-# LBC city ids. These are the Paris intramuros "cities" — grouped here for easy
-# tuning from the YAML. `r_12` is the Paris region; `d_75` is the Paris département.
-PARIS_LOCATION_CODE = "d_75"
+
+def _wanted_room_counts(c: SearchCriteria) -> list[int]:
+    """'T1'/'T2'… from the preferred + acceptable types → [1, 2]."""
+    counts: set[int] = set()
+    for t in c.property.types.preferred + c.property.types.acceptable:
+        m = re.fullmatch(r"[TtFf](\d+)", t.strip())
+        if m:
+            counts.add(int(m.group(1)))
+        elif t.strip().lower() == "studio":
+            counts.add(1)
+    return sorted(counts)
+
+
+def _min_surface(c: SearchCriteria) -> int:
+    """Smallest surface floor among the wanted types (URL filter = loosest bound)."""
+    wanted = c.property.types.preferred + c.property.types.acceptable
+    floors = [v for k, v in c.property.min_surface.items() if k in wanted]
+    floors = floors or list(c.property.min_surface.values())
+    return int(min(floors)) if floors else 0
+
+
+def _lbc_locations(c: SearchCriteria) -> list[str]:
+    """``zones.include`` → LBC ``City_Postcode`` tokens, one per commune.
+
+    LBC's ``locations`` param takes comma-separated ``<City>_<postcode>``
+    tokens (the same slug as its ``/cl/locations/cp_clichy_92110`` pages); a
+    city token covers the whole commune, so rules sharing an INSEE code
+    (Saint-Denis 93200 + 93210) collapse to the first one.
+    """
+    tokens: list[str] = []
+    seen: set[str] = set()
+    for z in c.zones.include:
+        key = z.insee or f"{z.city}|{z.code}"
+        if key in seen:
+            continue
+        seen.add(key)
+        city = z.city.strip().replace(" ", "-")
+        tokens.append(f"{city}_{z.code}" if city else z.code)
+    return tokens
 
 
 def _build_listing_url(criteria=None) -> str:
     c = criteria or get_criteria()
-    max_price = int(c.property.max_rent_cc)
-    return LBC_LISTING_URL.format(max_price=max_price, locations=PARIS_LOCATION_CODE)
+    rooms = _wanted_room_counts(c)
+    rooms_param = f"{rooms[0]}-{rooms[-1]}" if rooms else "min-max"
+    return LBC_LISTING_URL.format(
+        max_price=int(c.property.max_rent_cc),
+        rooms=rooms_param,
+        min_surface=_min_surface(c) or "min",
+        locations=quote(",".join(_lbc_locations(c)), safe=",_-"),
+    )
 
 
 def _type_from_rooms(rooms: int | None) -> str | None:
@@ -151,7 +195,7 @@ def prefilter_ad(
     if rent is not None and rent > criteria.property.max_rent_cc:
         return False, f"loyer {rent:.0f}>{criteria.property.max_rent_cc:.0f}"
 
-    # Property type — drop studios / T1 etc. that aren't wanted.
+    # Property type — drop room counts that aren't wanted (e.g. T3+).
     rooms = _to_int(_attr(ad, "rooms"))
     prop_type = _type_from_rooms(rooms)
     allowed = set(criteria.property.types.preferred + criteria.property.types.acceptable)
@@ -217,7 +261,13 @@ class LeBonCoinScraper(BaseScraper):
             url_ad = ad.get("url") or (f"https://www.leboncoin.fr/ad/locations/{list_id}")
             if not list_id:
                 continue
-            entries.append({"external_id": str(list_id), "url": str(url_ad), "ad": ad})
+            entry: dict[str, Any] = {"external_id": str(list_id), "url": str(url_ad), "ad": ad}
+            loc = ad.get("location") or {}
+            postcode = loc.get("zipcode") or loc.get("postal_code")
+            if postcode:
+                # Lets the base zone pre-filter decide without a detail fetch.
+                entry["postal_code"] = str(postcode)
+            entries.append(entry)
         logger.debug(f"[leboncoin] parsed {len(entries)} ads from __NEXT_DATA__")
         return entries
 

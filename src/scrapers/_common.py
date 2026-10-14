@@ -77,7 +77,7 @@ def parse_generic_detail(
     if entry_pc:
         postcode = str(entry_pc)
     else:
-        m = re.search(r"\b(75\d{3})\b", body_text)
+        m = re.search(r"\b((?:75|77|78|9[1-5])\d{3})\b", body_text)
         postcode = m.group(1) if m else None
     photos: list[str] = []
     seen_photos: set[str] = set()

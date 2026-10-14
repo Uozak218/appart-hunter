@@ -1,17 +1,20 @@
-"""Geo helpers: Paris postcode parsing + zone matching against search criteria."""
+"""Geo helpers: Île-de-France postcode parsing + zone matching against search criteria."""
 
 from __future__ import annotations
 
 import re
 
 from src.config import SearchCriteria, TouristicBBox, ZoneRule
+from src.utils.hashing import normalise_text
 from src.utils.metro import (
     is_near_line14_station,
     is_near_well_connected_metro_20e,
     is_paris_intramuros,
 )
 
-_POSTAL_RE = re.compile(r"\b(75\d{3})\b")
+# Île-de-France départements only (75, 77, 78, 91-95): a bare 5-digit match
+# would also catch listing ids in URLs.
+_POSTAL_RE = re.compile(r"\b((?:75|77|78|9[1-5])\d{3})\b")
 
 
 def extract_postal_code(text: str | None) -> str | None:
@@ -45,12 +48,28 @@ def zone_rule_for(criteria: SearchCriteria, postcode: str | None) -> ZoneRule | 
     return None
 
 
+def _in_sub_area(rule: ZoneRule, lat: float | None, lon: float | None, text: str | None) -> bool:
+    """For a postcode restricted to one sub-area (Saint-Denis → Pleyel/Plaine).
+
+    Coords win when present. Without coords we fall back to keywords in the
+    listing text; with neither, the listing is rejected — the restriction exists
+    precisely to keep the rest of the commune out.
+    """
+    if rule.include_bbox and lat is not None and lon is not None:
+        return in_bbox(lat, lon, rule.include_bbox)
+    if text and rule.include_keywords:
+        norm = normalise_text(text)
+        return any(normalise_text(kw) in norm for kw in rule.include_keywords)
+    return False
+
+
 def is_in_target_zone(
     criteria: SearchCriteria,
     *,
     postcode: str | None,
     lat: float | None = None,
     lon: float | None = None,
+    text: str | None = None,
 ) -> bool:
     """True iff this listing passes the zone gate.
 
@@ -67,6 +86,8 @@ def is_in_target_zone(
     """
     rule = zone_rule_for(criteria, postcode)
     if rule is not None:
+        if (rule.include_bbox or rule.include_keywords) and not _in_sub_area(rule, lat, lon, text):
+            return False
         in_tourist_bbox = (
             rule.exclude_touristic
             and rule.touristic_bbox

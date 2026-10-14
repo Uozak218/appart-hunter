@@ -57,35 +57,35 @@ async def run() -> int:
         source="leboncoin",
         external_id="selftest-1",
         url="https://www.leboncoin.fr/ad/locations/selftest-1",
-        title="Magnifique T3 haussmannien parquet moulures cheminée",
+        title="Studio 26m² refait à neuf proche métro Mairie de Clichy",
         description=(
-            "Bel appartement T3 de 52m², parquet ancien, moulures, cheminée "
-            "décorative, hauteur sous plafond 3m, 4e étage avec ascenseur, "
-            "calme sur cour, refait à neuf. Charges incluses dans le loyer."
+            "Studio non meublé de 26m², cuisine équipée séparée, salle d'eau "
+            "refaite, 4e étage avec ascenseur, calme sur cour, à 3 min du "
+            "métro Mairie de Clichy (M13). Charges incluses dans le loyer."
         ),
-        rent_cc=1850,
-        charges=120,
-        surface_m2=52,
-        rooms=3,
-        property_type="T3",
+        rent_cc=750,
+        charges=60,
+        surface_m2=26,
+        rooms=1,
+        property_type="T1",
         furnished=False,
         floor=4,
         has_elevator=True,
-        postal_code="75011",
-        latitude=48.857,
-        longitude=2.378,
-        address="Paris 11e",
+        postal_code="92110",
+        latitude=48.9035,
+        longitude=2.3062,
+        address="Clichy",
         photo_urls=[f"https://img.example/{i}.jpg" for i in range(1, 6)],
     )
 
     print("\n[2/8] Geo + zone gate")
     failures += not _ok(
-        "75011 in target zone",
-        is_in_target_zone(criteria, postcode="75011"),
+        "92110 (Clichy) in target zone",
+        is_in_target_zone(criteria, postcode="92110"),
     )
     failures += not _ok(
-        "75016 NOT in target zone",
-        not is_in_target_zone(criteria, postcode="75016"),
+        "75011 (Paris) NOT in target zone",
+        not is_in_target_zone(criteria, postcode="75011"),
     )
 
     print("\n[3/8] Hashing + dedup key")
@@ -120,14 +120,14 @@ async def run() -> int:
         listing_id=1,
         raw=raw,
         score=88,
-        highlights=["parquet ancien", "moulures", "calme sur cour"],
+        highlights=["salle d'eau refaite", "cuisine séparée", "calme sur cour"],
         red_flags=[],
-        reasons=["Cachet parisien complet, photos cohérentes."],
+        reasons=["Studio refait sous le budget, à 3 min du métro."],
         is_urgent=True,
     )
     msg = telegram_message(scored)
-    failures += not _ok("Telegram template renders title", "Magnifique" in msg)
-    failures += not _ok("Telegram template renders price", "1850" in msg)
+    failures += not _ok("Telegram template renders title", "Studio" in msg)
+    failures += not _ok("Telegram template renders price", "750" in msg)
     embed = discord_embed(scored)
     failures += not _ok("Discord embed has fields", len(embed["fields"]) >= 3)
 

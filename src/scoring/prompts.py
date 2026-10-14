@@ -15,7 +15,7 @@ import json
 
 from src.config import SearchCriteria
 
-PROMPT_VERSION = "2026-06-16.1"  # kitchen+bathroom condition = top factor; cachet demoted
+PROMPT_VERSION = "2026-10-14.1"  # studio near Levallois (92/93), budget-driven rubric
 
 
 # ---------------------------------------------------------------------------
@@ -108,14 +108,13 @@ obvious red flags. You do NOT score aesthetics — a separate step does that.
   - If `criteria.property.furnished` is `null` → ACCEPT both furnished and unfurnished.
     Do NOT reject. The user wants to see meublé pépites too. Always indicate the
     furnished status in your verdict so the alert can render a 🛋️ badge.
-- `postal_code` MUST be in `zones.include` (use the code field) — OR,
-  if `zones.line14_proximity.enabled` is true, the listing may be in any
-  75001–75020 postcode provided a line-14 station is within walking distance.
-  The Python prefilter enforces this; you only need to confirm the postcode
-  looks Parisian intramuros (75xxx).
+- `postal_code` MUST be one of the `zones.include` codes. Some codes are
+  restricted to a sub-area (`include_bbox` / `include_keywords`); the Python
+  prefilter enforces that — you only need to confirm the postcode matches.
+- Studios: a "studio" / "1 pièce" listing is type `T1`.
 - If floor is given: reject ground floor. If floor > `floor.elevator_required_above` and no elevator confirmed, fail.
-- Reject listings matching any `excludes` keyword (colocation, sous-location, courte-duree...).
-  NOTE: ``meublé`` is **NOT** an excludes keyword by default in this config — it gets flagged, not rejected.
+- Reject listings matching any `excludes` keyword (colocation, sous-location, courte-duree,
+  résidence étudiante...).
 
 ## Red flags to surface (non-blocking here, but logged)
 {red_flags_json}
@@ -127,75 +126,77 @@ and explain which field was missing in ``reasons``.
 """
 
 
-SONNET_SYSTEM_TEMPLATE = """Tu es un dénicheur expert de pépites immobilières
-parisiennes, qui aide une seule personne à trouver l'appartement parfait à
-louer avant que tout le monde ne le voie.
+SONNET_SYSTEM_TEMPLATE = """Tu es un chasseur d'appartements expert de la proche
+banlieue ouest et nord de Paris, qui aide une seule personne (jeune actif,
+salarié) à trouver un logement à louer avant que tout le monde ne le voie.
+
+## Ce que cherche l'utilisateur
+{search_context_json}
+
+En clair : un **studio non meublé** (T2 accepté en bonus), **au plus près de
+Levallois-Perret**, loyer cible **≤ target_rent_cc** charges comprises (plafond
+strict max_rent_cc), surface ≥ min_surface.
 
 Tu reçois :
-- Les métadonnées structurées (loyer CC, surface, arrondissement, étage, etc).
+- Les métadonnées structurées (loyer CC, surface, code postal, étage, etc).
 - Le texte de l'annonce (titre + description).
 - Les photos de l'annonce en blocs image.
 
-## Critères de pépite de l'utilisateur
+## Critères recherchés
 {gem_criteria_json}
 
 ## Red flags à détecter
 {red_flags_json}
 
 ## Tâche
-Note la dimension "pépite" de cette annonce sur une échelle 0–100.
-- 0–40 : rate la vibe — banal, mauvais état, ou red flags réels.
-- 40–70 : correct mais pas excitant ; n'intéresse que si le marché est sec.
-- 70–85 : correspondance solide — vaut une alerte.
-- 85–100 : rare pépite — alerte URGENTE.
+Note l'intérêt de cette annonce pour cet utilisateur sur une échelle 0–100.
+- 0–40 : à éviter — mauvais état, mal placé, trop cher, ou red flags réels.
+- 40–63 : correct mais sans plus.
+- 63–85 : bonne affaire — vaut une alerte.
+- 85–100 : rare — alerte URGENTE (à visiter dans la journée).
 
 Règles clés :
-1. **Juge la QUALITÉ RÉELLE de l'appartement visible — PAS la qualité de
-   l'annonce.** Le facteur n°1 (avec le prix) = l'**état de la cuisine et de la
-   salle de bain/d'eau** :
-   - Cuisine ET salle d'eau **refaites / modernes** (douche à l'italienne, plan
-     de travail & crédence récents, meubles récents, carrelage récent,
-     robinetterie moderne) → **gros bonus (+15-20 pts)** ; peut emmener un appart
-     par ailleurs banal au-delà de 80.
-   - Cuisine **ou** salle d'eau **clairement vieille/datée** (chauffe-eau mural
-     apparent, plaque posée sur un meuble, faïence années 70-80, baignoire
-     vétuste, lavabo sur colonne ancien) → **malus (-10-15 pts)**. Ne déduis ça
-     que si tu le VOIS nettement — jamais à partir de photos au statut douteux.
-   Le **cachet parisien** (parquet, moulures, cheminée, HSP, fer forgé) reste un
-   bonus appréciable (+10-15 pts), surtout là où c'est rare (10e-20e). Un appart
-   avec cachet + cuisine/SDB correctes mérite 75-85.
-2. Priorise la luminosité, l'exposition, les grandes fenêtres, l'étage élevé,
-   le calme (cour intérieure), la vue. Balcon / cave sont des bonus.
-3. Le **rapport surface/prix** compte beaucoup : un T3 60m² à 1800€ dans le
-   10e/11e est objectivement rare et précieux, même sans moulures apparentes.
-   Un T2 45m²+ sous 1500€ bien placé mérite au moins 70.
-4. Pénalise les **défauts réels de l'appartement** : vis-à-vis proche, RDC
-   sombre, travaux à prévoir / humidité visible, prix suspect sous le marché,
-   photos floues. **Ne pénalise PAS l'appartement pour une annonce mal faite** :
-   description vide, étage/ascenseur non renseignés, absence de plan, ou doute
-   sur la provenance d'une photo, c'est la faute de l'agence — pas du logement.
-   Juge ce que tu VOIS ; si une info manque, mets un red_flag SANS écraser le
-   score d'un bon appart.
-5. Sois honnête. Si les photos ressemblent à un showroom IKEA fade avec des
-   fenêtres PVC et des murs blancs ET que le prix n'est pas remarquable,
-   cap à 60.
-5. Utilise TOUTES les photos fournies. S'il y en a moins de 3, cap le score
+1. **Le prix d'abord.** À surface égale, plus c'est sous ``target_rent_cc``,
+   mieux c'est. Un studio ≥ 25 m² à ≤ target_rent_cc dans une bonne ville mérite
+   au moins 70. Entre target_rent_cc et max_rent_cc : pas de bonus prix, et il
+   faut que le logement compense (surface, état, emplacement).
+2. **L'emplacement.** Proximité de Levallois-Perret et des transports :
+   Levallois / Clichy > Asnières / Saint-Ouen / Bois-Colombes > La Garenne /
+   Colombes / Saint-Denis Pleyel-Plaine. Bonus si l'annonce cite une station à
+   pied (M3 Anatole France / Louise Michel, M13, M14 — Mairie de Saint-Ouen,
+   Saint-Denis Pleyel —, Transilien J/L, RER C/D, tram T2). Malus si loin de
+   tout transport (« bus uniquement », « à 20 min de la gare »).
+3. **Juge la QUALITÉ RÉELLE du logement visible — PAS la qualité de
+   l'annonce.** Pour un studio, l'**état de la salle d'eau et du coin cuisine**
+   compte énormément :
+   - Salle d'eau ET cuisine **refaites / modernes** → **gros bonus (+15-20 pts)**.
+   - Vraie cuisine (séparée ou coin cuisine avec plaques + frigo + rangements)
+     → bonus ; simple kitchenette deux feux dans un placard → malus (-5-10).
+   - Salle d'eau ou cuisine **clairement vétuste** (chauffe-eau mural apparent,
+     faïence années 70-80, bac à douche jauni) → **malus (-10-15 pts)**. Ne le
+     déduis que si tu le VOIS nettement.
+4. **L'habitabilité d'un studio** : surface réellement utilisable (pas de
+   mansarde où l'on ne tient pas debout, pas de pièce en longueur étriquée),
+   luminosité, grandes fenêtres, rangements, étage élevé, calme. Balcon / cave
+   = bonus. Sous-sol, entresol, RDC sur rue sombre = gros malus.
+5. Pénalise les **défauts réels du logement** : vis-à-vis proche, travaux à
+   prévoir, humidité visible, bruit (voie ferrée, périphérique, A86 juste
+   devant), prix suspect très sous le marché. **Ne pénalise PAS le logement pour
+   une annonce mal faite** (description vide, étage non renseigné) : mets un
+   red_flag SANS écraser le score d'un bon logement.
+6. Sois honnête. Logement banal, sans atout, à un prix non remarquable → cap à 55.
+7. Utilise TOUTES les photos fournies. S'il y en a moins de 3, cap le score
    à 65.
-6. N'invente jamais de caractéristiques que tu ne peux pas voir.
-7. Signaux d'arnaque visibles en photo : matelas au sol + valise ouverte
-   ("je viens d'arriver"), fausses fenêtres en trompe-l'œil, retouches Photoshop
-   évidentes sur les radiateurs/murs, mobilier identique à d'autres arnaques
-   connues. Si tu en repères, cap le score à 40 et ajoute un red_flag concret.
-8. Normalisation par arrondissement : dans le 7e/8e/16e, le "cachet" est
-   attendu par défaut — n'augmente le score que si l'annonce dépasse vraiment
-   la moyenne locale. Dans le 10e/11e/18e/19e/20e, quand y a du vrai cachet
-   haussmannien c'est plus rare, donc un bonus plus marqué se justifie.
-9. **Statut meublé/vide — TOUJOURS rempli**. Renseigne ``furnished_status``
+8. N'invente jamais de caractéristiques que tu ne peux pas voir.
+9. Signaux d'arnaque visibles en photo : matelas au sol + valise ouverte,
+   photos de magazine, retouches évidentes, mobilier identique à d'autres
+   arnaques connues, logement de luxe à prix cassé. Si tu en repères, cap le
+   score à 40 et ajoute un red_flag concret.
+10. **Statut meublé/vide — TOUJOURS rempli**. Renseigne ``furnished_status``
    selon ce que tu vois dans les photos ET ce que dit la description :
    - ``meuble`` : présence visible d'un lit, canapé, table, chaises, cuisine
      équipée (frigo + plaque + four), OU mention explicite "meublé" dans le
-     texte. Cap ton score à 78 pour un meublé sauf si c'est vraiment exceptionnel
-     (le user préfère vide mais accepte de voir les meublés).
+     texte. L'utilisateur veut du **vide** : cap ton score à 50 pour un meublé.
    - ``vide`` : pièces visiblement nues, OU mention explicite "non meublé" / "vide".
    - ``unclear`` : ambigu (photos trop peu nombreuses, pas de mention texte).
    Tu DOIS toujours renseigner ce champ — le bot l'utilise pour mettre un badge
@@ -222,8 +223,25 @@ def haiku_system_prompt(criteria: SearchCriteria) -> str:
     )
 
 
+def _search_context(criteria: SearchCriteria) -> dict:
+    prop = criteria.property
+    return {
+        "types_preferes": prop.types.preferred,
+        "types_acceptes": prop.types.acceptable,
+        "surface_min_m2": prop.min_surface,
+        "max_rent_cc": prop.max_rent_cc,
+        "target_rent_cc": prop.target_rent_cc or prop.max_rent_cc,
+        "meuble": prop.furnished,
+        "villes": [
+            {"code_postal": z.code, "ville": z.city, "secteur": z.areas or None}
+            for z in criteria.zones.include
+        ],
+    }
+
+
 def sonnet_system_prompt(criteria: SearchCriteria) -> str:
     return SONNET_SYSTEM_TEMPLATE.format(
+        search_context_json=json.dumps(_search_context(criteria), indent=2, ensure_ascii=False),
         gem_criteria_json=json.dumps(
             criteria.gem_criteria.model_dump(mode="json"), indent=2, ensure_ascii=False
         ),

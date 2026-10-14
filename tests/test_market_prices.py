@@ -46,3 +46,11 @@ def test_scam_fallback_without_market_prices():
     raw = _raw(rent_cc=600, surface_m2=60, postal_code="75011")
     r = detect_scam(raw)
     assert r.is_scam
+
+
+def test_postcode_floor_wins_for_suburbs():
+    from src.config import MarketPrices
+
+    mp = MarketPrices(default_eur_per_m2=22.0, eur_per_m2_by_postcode={"92110": 28.0})
+    assert mp.floor_for(None, postcode="92110") == 28.0
+    assert mp.floor_for(None, postcode="92700") == 22.0

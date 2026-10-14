@@ -15,84 +15,131 @@ et plus fiable que de scanner le titre/description.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from bs4 import BeautifulSoup
 
+from src.config import ZoneRule
 from src.schemas.listing import RawListing
+from src.scrapers._common import parse_price, parse_surface
 from src.scrapers.base import BaseScraper
+from src.scrapers.bienici import passes_card_filters, unique_towns
 from src.scrapers.cffi_client import fetch_html
+from src.utils.hashing import normalise_text
 from src.utils.logging import logger
 
-FONCIA_LISTING_URL = "https://fr.foncia.com/location/paris-75"
 FONCIA_BASE = "https://fr.foncia.com"
+# One search per commune of ``criteria.zones.include`` (deduped by INSEE):
+#   /location/<ville>-<code postal>/appartement   (e.g. clichy-92110)
+# Foncia keys the page on the commune — saint-denis-93200 and saint-denis-93210
+# serve the same results. No price/surface/rooms filter is exposed in the URL,
+# so those are applied on the listing cards (``_should_fetch_detail``).
+FONCIA_TOWN_URL = FONCIA_BASE + "/location/{town}-{postcode}/appartement"
 
-# Foncia paginates at ``/location/paris-75/page-N`` (page 1 == the base URL).
-# The first page only holds ~10 of 50+ Paris rentals, so we sweep pages until
-# one yields no *new* listing (Foncia clamps an over-range page-N to the last
-# real page and re-serves it) or we hit this safety cap.
-_MAX_LISTING_PAGES = 15
+# Pagination: ``<town url>/page-N`` (page 1 == the base URL). Sweep until a
+# page yields no *new* listing (Foncia clamps an over-range page-N to the last
+# real page and re-serves it) or we hit this per-town safety cap.
+_MAX_LISTING_PAGES = 5
 
-# Detail URL: /location/paris-750XX/appartement/123456789.htm
-#         or  /location/paris-750XX/appartement-meuble/123456789.htm
-_DETAIL_RE = re.compile(r"/location/paris-(75\d{3})/(appartement(?:-meuble)?)/(\d{7,})\.htm")
+# Detail URLs:
+#   /location/levallois-perret-92300/appartement/331699284.htm
+#   /location/levallois-perret-92300/appartement/30089-552.htm
+#   /location/la-plaine-st-denis-93210/appartement-meuble/331695563.htm
+#   /location/saint-denis-93/appartement/331711066.htm   (department only!)
+_DETAIL_RE = re.compile(
+    r"/location/[a-z0-9-]+?-(\d{5}|\d{2}|2[ab])/"
+    r"((?:appartement|studio|maison)(?:-meuble)?)/([\w-]+)\.htm"
+)
+_CITY_POSTCODE_RE = re.compile(r"\((\d{5})\)")
+_ANY_POSTCODE_RE = re.compile(r"\b(\d{5})\b")
+
+
+def town_url(rule: ZoneRule) -> str:
+    return FONCIA_TOWN_URL.format(
+        town=normalise_text(rule.city).replace(" ", "-"), postcode=rule.code
+    )
+
+
+def parse_listing(html: str) -> list[dict[str, Any]]:
+    """Listing page → entries, with card-level rent/surface/rooms/postcode."""
+    soup = BeautifulSoup(html, "lxml")
+    entries: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for a in soup.select("a[href*='/location/']"):
+        href = a.get("href") or ""
+        m = _DETAIL_RE.search(href)
+        if not m:
+            continue
+        loc, path_type, ext = m.group(1), m.group(2), m.group(3)
+        if ext in seen:
+            continue
+        seen.add(ext)
+        card, text = a, ""
+        for _ in range(8):
+            if card.parent is None:
+                break
+            card = card.parent
+            text = card.get_text(" ", strip=True)
+            if "€" in text and "m²" in text:
+                break
+        postcode = loc if len(loc) == 5 else _first(_CITY_POSTCODE_RE, text)
+        entries.append(
+            {
+                "external_id": ext,
+                "url": FONCIA_BASE + href if href.startswith("/") else href,
+                "postal_code": postcode,
+                # URL pattern is deterministic — pass it through so Sonnet
+                # gets the right ``listing.furnished`` and doesn't guess.
+                "furnished": path_type.endswith("-meuble"),
+                "rent_cc": _card_price(card),
+                "surface_m2": parse_surface(text),
+                "rooms": _parse_rooms(text),
+            }
+        )
+    return entries
 
 
 class FonciaScraper(BaseScraper):
     source = "foncia"
     use_http_only = True
 
-    async def fetch_listing_page(self, page) -> list[dict[str, str]]:  # noqa: ARG002
-        entries: list[dict[str, str]] = []
+    async def fetch_listing_page(self, page) -> list[dict[str, Any]]:  # noqa: ARG002
+        entries: list[dict[str, Any]] = []
         seen: set[str] = set()
-        last_page = 0
-        for page_num in range(1, _MAX_LISTING_PAGES + 1):
-            url = FONCIA_LISTING_URL if page_num == 1 else f"{FONCIA_LISTING_URL}/page-{page_num}"
-            logger.info(f"[foncia] fetching listing {url}")
-            try:
-                html = await fetch_html(url, referer="https://fr.foncia.com/")
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(f"[foncia] listing fetch failed {url}: {exc}")
-                break
-            soup = BeautifulSoup(html, "lxml")
-            new_on_page = 0
-            for a in soup.select("a[href*='/location/paris-']"):
-                href = a.get("href") or ""
-                m = _DETAIL_RE.search(href)
-                if not m:
-                    continue
-                postcode, path_type, ext = m.group(1), m.group(2), m.group(3)
-                if ext in seen:
-                    continue
-                seen.add(ext)
-                new_on_page += 1
-                full = FONCIA_BASE + href if href.startswith("/") else href
-                entries.append(
-                    {
-                        "external_id": ext,
-                        "url": full,
-                        "postal_code": postcode,
-                        # URL pattern is deterministic — pass it through so Sonnet
-                        # gets the right ``listing.furnished`` and doesn't guess.
-                        "furnished": path_type == "appartement-meuble",
-                    }
-                )
-            last_page = page_num
-            # No new listing on this page → we've run past the last real page
-            # (Foncia clamps and re-serves it). Stop sweeping.
-            if new_on_page == 0:
-                break
-        else:
-            # Loop exhausted the cap without an empty page — there may be more.
-            logger.warning(
-                f"[foncia] hit page cap {_MAX_LISTING_PAGES}; some listings may be missed"
-            )
-        logger.info(f"[foncia] {len(entries)} listings across {last_page} page(s)")
+        for rule in unique_towns(self.criteria):
+            if not rule.city:
+                logger.warning(f"[foncia] no city name for {rule.code}; skipped")
+                continue
+            base_url = town_url(rule)
+            for page_num in range(1, _MAX_LISTING_PAGES + 1):
+                url = base_url if page_num == 1 else f"{base_url}/page-{page_num}"
+                logger.info(f"[foncia] fetching listing {url}")
+                try:
+                    html = await fetch_html(url, referer=FONCIA_BASE + "/")
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(f"[foncia] listing fetch failed {url}: {exc}")
+                    break
+                new_on_page = 0
+                for e in parse_listing(html):
+                    if e["external_id"] in seen:
+                        continue
+                    seen.add(e["external_id"])
+                    new_on_page += 1
+                    entries.append(e)
+                if new_on_page == 0:
+                    break
+            else:
+                logger.warning(f"[foncia] hit page cap for {rule.city}; some listings missed")
+        logger.info(f"[foncia] {len(entries)} listings")
         return entries
 
-    async def parse_detail(self, page, entry: dict[str, str]) -> RawListing | None:  # noqa: ARG002
+    def _should_fetch_detail(self, entry: dict[str, Any]) -> bool:
+        return passes_card_filters(self.criteria, entry)
+
+    async def parse_detail(self, page, entry: dict[str, Any]) -> RawListing | None:  # noqa: ARG002
         url = entry["url"]
         try:
-            html = await fetch_html(url, referer=FONCIA_BASE + "/location/paris-75")
+            html = await fetch_html(url, referer=FONCIA_BASE + "/location")
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"[foncia] detail fetch failed {url}: {exc}")
             return None
@@ -131,7 +178,11 @@ class FonciaScraper(BaseScraper):
         elif re.search(r"\bstudio\b", title, re.I):
             rooms = 1
 
-        postcode = entry.get("postal_code")
+        postcode = (
+            entry.get("postal_code")
+            or _first(_ANY_POSTCODE_RE, title)
+            or _first(_CITY_POSTCODE_RE, soup.get_text(" ", strip=True))
+        )
         # ``furnished`` decided at listing time from URL pattern.
         furnished = entry.get("furnished")
 
@@ -162,3 +213,24 @@ class FonciaScraper(BaseScraper):
 
 def _text(node) -> str:
     return node.get_text(" ", strip=True) if node else ""
+
+
+def _first(pattern: re.Pattern[str], text: str | None) -> str | None:
+    m = pattern.search(text or "")
+    return m.group(1) if m else None
+
+
+def _parse_rooms(text: str) -> int | None:
+    m = re.search(r"(\d+)\s*pi[èe]ces?", text or "", re.I)
+    if m:
+        return int(m.group(1))
+    return 1 if re.search(r"\bstudio\b", text or "", re.I) else None
+
+
+def _card_price(card) -> float | None:
+    """First text node carrying a € amount — parsing the flattened card text
+    would glue the photo counter ("x7") onto the price ("7 961 €")."""
+    for t in card.stripped_strings:
+        if "€" in t:
+            return parse_price(t)
+    return None

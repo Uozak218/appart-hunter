@@ -1,4 +1,4 @@
-"""Weekly digest of the Paris market — pushed every Sunday evening."""
+"""Weekly digest of the rental market — pushed every Sunday evening."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from src.models.listing import Listing, ListingStatus
 from src.models.score import ApiUsage, Score, ScoreStage
 from src.models.scraper_health import ScraperHealth
 from src.notifier.queue import get_notification_queue
-from src.notifier.templates import SOURCE_LABEL
+from src.notifier.templates import SOURCE_LABEL, fmt_arrondissement
 
 
 async def _gather_digest(session: AsyncSession) -> str:
@@ -60,10 +60,10 @@ async def _gather_digest(session: AsyncSession) -> str:
     )
     top = list(top_res.all())
 
-    # Market price stats per arrondissement (median rent_cc / surface)
+    # Market price stats per postcode (median rent_cc / surface)
     market_res = await session.execute(
         select(
-            Listing.arrondissement,
+            Listing.postal_code,
             func.percentile_cont(0.5).within_group(
                 Listing.rent_cc / func.nullif(Listing.surface_m2, 0)
             ),
@@ -74,10 +74,10 @@ async def _gather_digest(session: AsyncSession) -> str:
             Listing.surface_m2.is_not(None),
             Listing.rent_cc.is_not(None),
             Listing.surface_m2 > 0,
-            Listing.arrondissement.is_not(None),
+            Listing.postal_code.is_not(None),
         )
-        .group_by(Listing.arrondissement)
-        .order_by(Listing.arrondissement)
+        .group_by(Listing.postal_code)
+        .order_by(Listing.postal_code)
     )
     market = list(market_res.all())
 
@@ -140,7 +140,7 @@ async def _gather_digest(session: AsyncSession) -> str:
     if top:
         lines.append("*🏆 Top pépites*")
         for listing, score in top:
-            arr = f"75{listing.arrondissement:02d}" if listing.arrondissement else "—"
+            arr = listing.postal_code or "—"
             price = f"{int(listing.rent_cc)} €" if listing.rent_cc else "—"
             surface = f"{int(listing.surface_m2)} m²" if listing.surface_m2 else "—"
             lines.append(
@@ -151,10 +151,10 @@ async def _gather_digest(session: AsyncSession) -> str:
 
     if market:
         lines.append("*💶 Prix médian €/m² (charges comprises)*")
-        for arr, price, n in market:
+        for postcode, price, n in market:
             if price is None:
                 continue
-            lines.append(f"• Paris {int(arr):02d}e : {float(price):.1f} €/m²  _(n={n})_")
+            lines.append(f"• {fmt_arrondissement(postcode)} : {float(price):.1f} €/m²  _(n={n})_")
         lines.append("")
 
     lines.append("*⚙️ État des scrapers*")

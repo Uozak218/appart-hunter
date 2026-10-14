@@ -17,34 +17,143 @@ from typing import Any
 from bs4 import BeautifulSoup
 from playwright.async_api import Page
 
-from src.config import get_criteria
+from src.config import SearchCriteria, get_criteria
 from src.schemas.listing import RawListing
 from src.scrapers.base import BaseScraper
-from src.utils.geo import arrondissement_from_postcode, is_in_target_zone
+from src.utils.geo import is_in_target_zone
+from src.utils.hashing import normalise_text
 from src.utils.logging import logger
 
-# Note: SeLoger's ``places`` parameter uses literal braces (``[{ci:750056}]``)
-# that clash with Python str.format. We escape them by doubling the braces.
+# Note: SeLoger's ``places`` parameter uses literal braces (``[{ci:920024}]``)
+# that clash with Python str.format — the value is injected whole via
+# ``{places}``, so no brace escaping is needed in the template.
+# types=1 → appartement only. rooms=1,2 → studio + 2 pièces.
 SELOGER_LISTING_URL = (
     "https://www.seloger.com/list.htm?"
-    "projects=1&types=1,2&places=[{{ci:750056}}]&price=NaN/{max_price}&"
+    "projects=1&types=1&places={places}&rooms={rooms}&price=NaN/{max_price}&"
     "surface={min_surface}/NaN&enterprise=0&natures=1,2,4&"
     "sort=d_dt_crea&qsVersion=1.0"
 )
 
 _NUXT_RE = re.compile(r'<script[^>]*id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S)
 
-# SeLoger detail URLs carry the arrondissement: '.../paris-11eme-75/123.htm'.
-_SELOGER_ARR_RE = re.compile(r"/paris-(\d{1,2})(?:er|eme|e)?-75/")
+# SeLoger detail URLs carry the commune slug + département:
+#   '.../annonces/locations/appartement/clichy-92/centre-ville/123.htm'
+#   '.../annonces/locations/appartement/paris-11eme-75/123.htm'
+_SELOGER_LOC_RE = re.compile(r"/annonces/locations/[^/]+/([a-z0-9-]+?)-(\d{2}|2[ab])/", re.I)
+_PARIS_ARR_RE = re.compile(r"^paris-(\d{1,2})(?:er|eme|e)?$")
+# "Clichy (92110)" / "92110 Clichy" — any metropolitan 5-digit postcode.
+_POSTCODE_RE = re.compile(r"\b((?:0[1-9]|[1-8]\d|9[0-5])\d{3})\b")
+_CITY_POSTCODE_RE = re.compile(r"\(((?:0[1-9]|[1-8]\d|9[0-5])\d{3})\)")
 
 
-def postcode_from_seloger_url(url: str) -> str | None:
-    """'/.../paris-11eme-75/123.htm' -> '75011'. None if not parseable."""
-    m = _SELOGER_ARR_RE.search(url or "")
+def seloger_ci(insee: str) -> str | None:
+    """INSEE commune code → SeLoger ``ci`` id: '92024' → '920024'.
+
+    SeLoger pads the 3-digit commune suffix with a 0 after the 2-char
+    département (Paris 75056 → 750056, Saint-Ouen 93070 → 930070, as in its
+    ``/prix-de-l-immo/.../saint-ouen/930070.htm`` pages).
+    """
+    insee = (insee or "").strip()
+    if len(insee) != 5:
+        return None
+    return f"{insee[:2]}0{insee[2:]}"
+
+
+def _seloger_places(c: SearchCriteria) -> str:
+    """``zones.include`` → ``[{ci:920044}|{ci:920024}|…]`` (deduped by INSEE)."""
+    cis: list[str] = []
+    for z in c.zones.include:
+        ci = seloger_ci(z.insee)
+        if ci is None:
+            logger.warning(f"[seloger] zone {z.code} {z.city!r} has no INSEE code — skipped")
+            continue
+        if ci not in cis:
+            cis.append(ci)
+    return "[" + "|".join(f"{{ci:{ci}}}" for ci in cis) + "]"
+
+
+def _wanted_room_counts(c: SearchCriteria) -> list[int]:
+    counts: set[int] = set()
+    for t in c.property.types.preferred + c.property.types.acceptable:
+        m = re.fullmatch(r"[TtFf](\d+)", t.strip())
+        if m:
+            counts.add(int(m.group(1)))
+        elif t.strip().lower() == "studio":
+            counts.add(1)
+    return sorted(counts)
+
+
+def _min_surface(c: SearchCriteria) -> int:
+    wanted = c.property.types.preferred + c.property.types.acceptable
+    floors = [v for k, v in c.property.min_surface.items() if k in wanted]
+    floors = floors or list(c.property.min_surface.values())
+    return int(min(floors)) if floors else 0
+
+
+def build_listing_url(criteria: SearchCriteria | None = None) -> str:
+    c = criteria or get_criteria()
+    rooms = _wanted_room_counts(c)
+    return SELOGER_LISTING_URL.format(
+        places=_seloger_places(c),
+        rooms=",".join(str(r) for r in rooms) if rooms else "NaN",
+        max_price=int(c.property.max_rent_cc),
+        min_surface=_min_surface(c) or "NaN",
+    )
+
+
+def _slug(text: str) -> str:
+    return normalise_text(text).replace(" ", "-")
+
+
+def seloger_url_location(url: str) -> tuple[str, str] | None:
+    """'/…/appartement/clichy-92/centre/1.htm' → ('clichy', '92'). None if absent."""
+    m = _SELOGER_LOC_RE.search(url or "")
     if not m:
         return None
-    arr = int(m.group(1))
-    return f"750{arr:02d}" if 1 <= arr <= 20 else None
+    return m.group(1).lower(), m.group(2).upper()
+
+
+def postcode_from_seloger_url(url: str, criteria: SearchCriteria | None = None) -> str | None:
+    """Best-effort postcode from a SeLoger detail URL.
+
+    - Paris arrondissement slug: 'paris-11eme-75' → '75011'.
+    - Commune slug matching a ``zones.include`` town with a single postcode:
+      'clichy-92' → '92110'. Towns with several postcodes (Saint-Denis
+      93200/93210) are ambiguous → None.
+    """
+    loc = seloger_url_location(url)
+    if loc is None:
+        return None
+    slug, dept = loc
+    m = _PARIS_ARR_RE.match(slug)
+    if m and dept == "75":
+        arr = int(m.group(1))
+        return f"750{arr:02d}" if 1 <= arr <= 20 else None
+    if criteria is None:
+        return None
+    codes = {
+        z.code for z in criteria.zones.include if _slug(z.city) == slug and z.code.startswith(dept)
+    }
+    return codes.pop() if len(codes) == 1 else None
+
+
+def url_is_out_of_zone(url: str, criteria: SearchCriteria) -> bool:
+    """True when the URL provably points outside ``zones.include``.
+
+    Conservative: unparseable URL or ambiguous town → False (keep).
+    """
+    loc = seloger_url_location(url)
+    if loc is None:
+        return False
+    slug, dept = loc
+    postcode = postcode_from_seloger_url(url, criteria)
+    if postcode is not None:
+        return not is_in_target_zone(criteria, postcode=postcode, lat=None, lon=None)
+    # Town not resolved to a single postcode: out of zone unless it names one
+    # of the target communes (e.g. Saint-Denis with two postcodes).
+    known = {(_slug(z.city), z.code[:2]) for z in criteria.zones.include if z.city}
+    return (slug, dept) not in known
 
 
 class SeLogerScraper(BaseScraper):
@@ -55,24 +164,16 @@ class SeLogerScraper(BaseScraper):
 
     def _should_fetch_detail(self, entry: dict[str, Any]) -> bool:
         # SeLoger's listing page only gives id + url, so the only thing we can
-        # reject before paying for the detail is the zone — and the arrondissement
-        # is in the URL. Skips the excluded arrondissements (8/15/16/19).
-        postcode = postcode_from_seloger_url(entry.get("url", ""))
-        if postcode is None:
-            return True
-        if not is_in_target_zone(self.criteria, postcode=postcode, lat=None, lon=None):
-            logger.debug(
-                f"[seloger] skip detail {entry.get('external_id')}: hors zone ({postcode})"
-            )
+        # reject before paying for the detail is the zone — and the commune
+        # (or Paris arrondissement) is in the URL slug.
+        url = entry.get("url", "")
+        if url_is_out_of_zone(url, self.criteria):
+            logger.debug(f"[seloger] skip detail {entry.get('external_id')}: hors zone ({url})")
             return False
         return True
 
     async def fetch_listing_page(self, page: Page) -> list[dict[str, Any]]:
-        c = self.criteria or get_criteria()
-        min_surface = int(min(c.property.min_surface.values()) if c.property.min_surface else 40)
-        url = SELOGER_LISTING_URL.format(
-            max_price=int(c.property.max_rent_cc), min_surface=min_surface
-        )
+        url = build_listing_url(self.criteria)
         logger.info(f"[seloger] fetching listing {url}")
         await page.goto(url, timeout=self.listing_timeout_ms, wait_until="domcontentloaded")
 
@@ -92,7 +193,7 @@ class SeLogerScraper(BaseScraper):
                 return entries
 
         # HTML fallback — SeLoger no longer exposes __NEXT_DATA__ (2026 redesign).
-        # Detail URLs: /annonces/locations/appartement/paris-XXeme-75/NNNNNNNNN.htm
+        # Detail URLs: /annonces/locations/appartement/<commune>-<dept>/[quartier/]NNN.htm
         soup = BeautifulSoup(html, "lxml")
         entries = []
         seen: set[str] = set()
@@ -101,15 +202,16 @@ class SeLogerScraper(BaseScraper):
             ext = _extract_id_from_url(href)
             if not ext or ext in seen:
                 continue
-            # Keep only Paris (75) — some listings are in nearby départements.
-            if "-75/" not in href:
-                continue
             seen.add(ext)
             # Strip query string + relative-resolve.
             href = href.split("?", 1)[0]
             if href.startswith("/"):
                 href = "https://www.seloger.com" + href
-            entries.append({"external_id": str(ext), "url": href})
+            entry: dict[str, Any] = {"external_id": str(ext), "url": href}
+            postcode = postcode_from_seloger_url(href, self.criteria)
+            if postcode:
+                entry["postal_code"] = postcode
+            entries.append(entry)
         logger.debug(f"[seloger] parsed {len(entries)} entries from HTML")
         return entries
 
@@ -131,14 +233,13 @@ class SeLogerScraper(BaseScraper):
         surface = _extract_surface(text)
         rooms = _extract_rooms(text)
 
-        postcode_match = re.search(r"\b(75\d{3})\b", html)
-        postcode = postcode_match.group(1) if postcode_match else None
-        arr = arrondissement_from_postcode(postcode)
+        postcode = extract_postcode(text, url, self.criteria)
+        city = _city_for_postcode(self.criteria, postcode)
 
         page_title = soup.find("title")
         title = (
             page_title.get_text(strip=True).split(" - SeLoger")[0].strip() if page_title else ""
-        ) or f"Appartement {('T' + str(rooms) + ' ') if rooms else ''}Paris {arr}e".strip()
+        ) or f"Appartement {('T' + str(rooms) + ' ') if rooms else ''}{city or ''}".strip()
         description = _text(soup.select_one("[class*='escription'], [data-test*='escription']"))
 
         photos: list[str] = []
@@ -163,6 +264,38 @@ class SeLogerScraper(BaseScraper):
             photo_urls=photos,
             raw={"html_length": len(html)},
         )
+
+
+def extract_postcode(
+    text: str, url: str = "", criteria: SearchCriteria | None = None
+) -> str | None:
+    """Postcode of a detail page — any French 5-digit code, not just 75xxx.
+
+    Order: 'Ville (92110)' in the page text → URL slug → first target-zone
+    postcode seen in the text → first plausible postcode in the text.
+    """
+    m = _CITY_POSTCODE_RE.search(text or "")
+    if m:
+        return m.group(1)
+    from_url = postcode_from_seloger_url(url, criteria)
+    if from_url:
+        return from_url
+    candidates = _POSTCODE_RE.findall(text or "")
+    if criteria is not None:
+        targets = {z.code for z in criteria.zones.include}
+        for pc in candidates:
+            if pc in targets:
+                return pc
+    return candidates[0] if candidates else None
+
+
+def _city_for_postcode(criteria: SearchCriteria | None, postcode: str | None) -> str | None:
+    if criteria is None or not postcode:
+        return None
+    for z in criteria.zones.include:
+        if z.code == postcode and z.city:
+            return z.city
+    return None
 
 
 def _walk_for_seloger_items(data: Any) -> list[dict[str, Any]]:

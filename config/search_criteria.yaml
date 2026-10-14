@@ -1,100 +1,111 @@
-# Paris Flat Hunter — search criteria
+# Appart Hunter — search criteria
 # Edit freely; reloaded by the app at startup.
+#
+# Recherche : studio non meublé (T2 en bonus) au plus près de Levallois-Perret,
+# Hauts-de-Seine nord + Saint-Ouen + Saint-Denis (Pleyel / La Plaine seulement).
+# Budget cible 760 € CC, plafond strict 800 € CC.
 
 property:
   types:
-    preferred: [T3]
-    acceptable: [T2]
+    preferred: [T1]      # studio / 1 pièce
+    acceptable: [T2]     # bonus si dans le budget
   min_surface:
-    T3: 45
-    T2: 40
-  max_rent_cc: 1901
+    T1: 22
+    T2: 22
+  max_rent_cc: 800
+  target_rent_cc: 760
   furnished: false
   floor:
     no_ground_floor: true
     elevator_required_above: 4
 
 zones:
-  # Broad include: every Paris arrondissement except 8, 15, 16, 19.
-  # The 20e is gated by proximity to a well-served metro station.
   include:
-    # Paris centre — historiques
-    - code: "75001"
-    - code: "75002"
-    - code: "75003"
-    - code: "75004"
-    - code: "75005"
-      exclude_touristic: true
-      touristic_bbox:
-        min_lat: 48.8430
-        max_lat: 48.8510
-        min_lon: 2.3400
-        max_lon: 2.3520
-    - code: "75006"
-    - code: "75007"
-    - code: "75009"
-    - code: "75010"
-    - code: "75011"
-    - code: "75012"
-    - code: "75013"
-    - code: "75014"
-      exclude_touristic: true
-      touristic_bbox:
-        min_lat: 48.820
-        max_lat: 48.831
-        min_lon: 2.310
-        max_lon: 2.345
-    - code: "75017"
-    - code: "75018"
-      # Nord du 18e (au-dessus de Jules Joffrin / Marcadet, vers les portes) =
-      # trop loin. On exclut cette bande nord — MAIS seulement si on a les
-      # coords ; sans coords (info morte), l'annonce passe et tu vérifies.
-      exclude_touristic: true
-      touristic_bbox:
-        min_lat: 48.892
-        max_lat: 48.910
-        min_lon: 2.300
-        max_lon: 2.400
-    - code: "75020"
-      require_well_connected_metro: true
-  # Line-14 expansion: accept any Paris intramuros listing within 5 min walk of
-  # a line-14 station, even if its arrondissement is not in `include` above.
-  # Stations covered (2026): Porte de Clichy, Pont Cardinet, Saint-Lazare,
-  # Madeleine, Pyramides, Châtelet, Gare de Lyon, Bercy, Cour Saint-Émilion,
-  # Bibliothèque François Mitterrand, Olympiades.
+    # 1er cercle — collé à Levallois
+    - code: "92300"
+      city: "Levallois-Perret"
+      insee: "92044"
+    - code: "92110"
+      city: "Clichy"
+      insee: "92024"
+    # Nord 92
+    - code: "92600"
+      city: "Asnières-sur-Seine"
+      insee: "92004"
+    - code: "92270"
+      city: "Bois-Colombes"
+      insee: "92009"
+    - code: "92250"
+      city: "La Garenne-Colombes"
+      insee: "92035"
+    - code: "92700"
+      city: "Colombes"
+      insee: "92025"
+    # 93 — accès M13 / M14
+    - code: "93400"
+      city: "Saint-Ouen-sur-Seine"
+      insee: "93070"
+    # Saint-Denis : uniquement Pleyel / Stade de France / La Plaine (quartiers
+    # neufs autour de la M14 et du RER D). Le reste de la ville est exclu.
+    - code: "93200"
+      city: "Saint-Denis"
+      insee: "93066"
+      areas: ["Pleyel", "Stade de France", "La Plaine"]
+      include_bbox:
+        min_lat: 48.900
+        max_lat: 48.930
+        min_lon: 2.330
+        max_lon: 2.375
+      include_keywords:
+        - pleyel
+        - stade de france
+        - la plaine
+        - plaine saint-denis
+        - front populaire
+        - landy
+        - cornillon
+        - wilson
+    - code: "93210"
+      city: "Saint-Denis"
+      insee: "93066"
+      areas: ["La Plaine Saint-Denis"]
+  # Pas de Paris : la ligne 14 « intramuros » ne s'applique pas ici.
   line14_proximity:
-    enabled: true
-    max_walk_minutes: 5.0
+    enabled: false
 
 excludes:
   - colocation
   - sous-location
   - courte-duree
   - meuble
+  - residence etudiante
+  - residence services
 
 gem_criteria:
   must_have_signals:
-    - cachet_parisien   # parquet, moulures, cheminée, HSP
+    - bon_rapport_surface_prix
+    - proche_transports   # M13, M14, Transilien J/L, RER D, tram T2
   nice_to_have:
-    - refait_a_neuf
+    - cuisine_separee_ou_equipee
+    - salle_d_eau_refaite
     - tres_lumineux
-    - balcon
     - etage_eleve
     - calme
-    - vue_degagee
+    - balcon
+    - rangements
     - cave
 
 red_flags:
   - photos_floues
   - peu_de_photos
-  # absence_de_plan supprimé — le plan est rare dans les annonces de location
-  # (essentiellement présent à la vente). Pas un signal pertinent ici.
-  - description_bacelee
   - prix_anormalement_bas
   - vis_a_vis_proche
   - travaux_a_prevoir
   - humidite
   - bruit
+  - sous_sol_ou_entresol
+  - kitchenette_minuscule
+  - surface_loi_carrez_douteuse
 
 scoring:
   alert_threshold: 63
@@ -102,31 +113,18 @@ scoring:
   price_drop_alert: true
   min_price_drop_pct: 3.0
 
-# Per-arrondissement rent/m² floors used by the scam detector. Leave empty to
-# use the built-in 2026 defaults (see src/config.py DEFAULT_EUR_PER_M2_FLOOR).
-# Override any arrondissement explicitly below if the local market has moved.
+# Prix planchers (€/m² CC) utilisés par l'anti-arnaque : une annonce < 60 % du
+# plancher est traitée comme une arnaque, < 80 % est signalée « sous le marché ».
+# Valeurs = loyers moyens 2026 (SeLoger / Observatoires des loyers).
 market_prices:
-  default_eur_per_m2: 28.0
-  # eur_per_m2:
-  #   11: 29.0
-  #   3: 39.0
-  # Per-quartier refinements (checked BEFORE the per-arr floor). Each entry
-  # matches when the listing is in `arrondissement` AND any of `keywords`
-  # appears in title / description / address (case + accent insensitive).
-  quartiers:
-    - arrondissement: 11
-      name: "Oberkampf / République"
-      eur_per_m2: 31.0
-      keywords: ["oberkampf", "republique", "parmentier", "saint-ambroise"]
-    - arrondissement: 12
-      name: "Bastille / Gare de Lyon"
-      eur_per_m2: 30.0
-      keywords: ["bastille", "gare de lyon", "ledru-rollin", "reuilly"]
-    - arrondissement: 10
-      name: "Canal Saint-Martin"
-      eur_per_m2: 32.0
-      keywords: ["canal saint-martin", "canal st martin", "republique", "gare de l est"]
-    - arrondissement: 9
-      name: "Grands Boulevards / Opéra"
-      eur_per_m2: 35.0
-      keywords: ["grands boulevards", "opera", "chaussee d antin", "saint-georges"]
+  default_eur_per_m2: 22.0
+  eur_per_m2_by_postcode:
+    "92300": 31.0   # Levallois-Perret
+    "92110": 28.0   # Clichy
+    "92600": 24.0   # Asnières-sur-Seine
+    "92270": 23.0   # Bois-Colombes
+    "92250": 24.0   # La Garenne-Colombes
+    "92700": 22.0   # Colombes
+    "93400": 24.0   # Saint-Ouen-sur-Seine
+    "93200": 21.0   # Saint-Denis (estimation)
+    "93210": 21.0   # La Plaine Saint-Denis (estimation)

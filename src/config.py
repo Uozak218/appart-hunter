@@ -205,6 +205,8 @@ class PropertyCriteria(BaseModel):
     types: PropertyTypes = Field(default_factory=PropertyTypes)
     min_surface: dict[str, float] = Field(default_factory=lambda: {"T3": 45.0, "T2": 40.0})
     max_rent_cc: float = 2000.0
+    # Soft target below the hard cap: the scorer rewards listings at/under it.
+    target_rent_cc: float | None = None
     # ``None`` = accept both furnished + unfurnished (badge in alert).
     # ``False`` = strict unfurnished only.
     # ``True`` = strict furnished only.
@@ -221,7 +223,16 @@ class TouristicBBox(BaseModel):
 
 class ZoneRule(BaseModel):
     code: str
+    # Human city name (e.g. "Clichy") — scrapers use it to build search URLs.
+    city: str = ""
+    # INSEE commune code (e.g. "92024") — some sites key their search on it.
+    insee: str = ""
     areas: list[str] = Field(default_factory=list)
+    # Restrict the postcode to one sub-area: the listing is accepted only when
+    # its coords fall inside ``include_bbox``, or — without coords — when one of
+    # ``include_keywords`` appears in its title/description/address.
+    include_bbox: TouristicBBox | None = None
+    include_keywords: list[str] = Field(default_factory=list)
     exclude_touristic: bool = False
     touristic_bbox: TouristicBBox | None = None
     # When True, the listing must be within walking distance of a well-served
@@ -305,6 +316,8 @@ class MarketPrices(BaseModel):
     default_eur_per_m2: float = 28.0
     # Explicit per-arrondissement floors (key = int arrondissement).
     eur_per_m2: dict[int, float] = Field(default_factory=lambda: dict(DEFAULT_EUR_PER_M2_FLOOR))
+    # Per-postcode floors for communes outside Paris (key = "92110").
+    eur_per_m2_by_postcode: dict[str, float] = Field(default_factory=dict)
     # Optional quartier refinements (checked before per-arr floor).
     quartiers: list[QuartierOverride] = Field(default_factory=list)
 
@@ -313,7 +326,10 @@ class MarketPrices(BaseModel):
         arrondissement: int | None,
         *,
         text: str | None = None,
+        postcode: str | None = None,
     ) -> float:
+        if postcode and postcode in self.eur_per_m2_by_postcode:
+            return self.eur_per_m2_by_postcode[postcode]
         if arrondissement is not None and text and self.quartiers:
             # Lazy import to keep config dependency graph flat
             from src.utils.hashing import normalise_text

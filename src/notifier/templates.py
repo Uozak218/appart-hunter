@@ -27,10 +27,17 @@ def fmt_surface(v: float | None) -> str:
 
 
 def fmt_arrondissement(postcode: str | None) -> str:
-    if not postcode or len(postcode) != 5 or not postcode.startswith("75"):
-        return "Paris"
-    arr = int(postcode[2:])
-    return f"Paris {arr}e"
+    """'75011' -> 'Paris 11e'; '92110' -> 'Clichy (92110)' using the YAML city names."""
+    if not postcode or len(postcode) != 5:
+        return "—"
+    if postcode.startswith("75"):
+        return f"Paris {int(postcode[2:])}e"
+    from src.config import get_criteria
+
+    for zone in get_criteria().zones.include:
+        if zone.code == postcode and zone.city:
+            return f"{zone.city} ({postcode})"
+    return postcode
 
 
 # Backward-compat aliases for callers that already import the underscored names.

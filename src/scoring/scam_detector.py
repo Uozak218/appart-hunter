@@ -72,7 +72,7 @@ def detect_scam(raw: RawListing, market_prices: MarketPrices | None = None) -> S
     arr = arrondissement_from_postcode(raw.postal_code)
     listing_text = " ".join(filter(None, [raw.title, raw.description, raw.address]))
     if market_prices is not None:
-        floor = market_prices.floor_for(arr, text=listing_text)
+        floor = market_prices.floor_for(arr, text=listing_text, postcode=raw.postal_code)
     else:
         floor = PARIS_RENT_FLOOR_EUR_PER_M2
 

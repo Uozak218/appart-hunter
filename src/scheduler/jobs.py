@@ -68,7 +68,11 @@ SOURCE_INTERVALS_ATTR = {
 
 async def _passes_zone_gate(raw: RawListing, criteria: SearchCriteria) -> bool:
     return is_in_target_zone(
-        criteria, postcode=raw.postal_code, lat=raw.latitude, lon=raw.longitude
+        criteria,
+        postcode=raw.postal_code,
+        lat=raw.latitude,
+        lon=raw.longitude,
+        text=" ".join(filter(None, [raw.title, raw.description, raw.address])),
     )
 
 

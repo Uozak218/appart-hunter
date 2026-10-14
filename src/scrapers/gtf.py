@@ -1,8 +1,12 @@
 """GTF Locations scraper — small Paris boutique agency (gtf.fr).
 
-~13 active listings. Server-rendered HTML, no anti-bot.
+~20 active listings. Server-rendered HTML, no anti-bot, no location filter.
 Listings at ``/fr/louer-liste-des-biens``, details at
-``/fr/bien-immobilier-...-{id}``.
+``/fr/bien-immobilier-<city-slug>-...-{id}``. When the slug carries a postcode
+(``…-neuilly-sur-seine-92200-…``) we tag the entry with it so the base zone
+pre-filter can skip it without a detail fetch.
+2026-10-14: stock is Paris / Boulogne / Neuilly / Saint-Mandé only — nothing in
+the 92-nord / 93 towns.
 """
 
 from __future__ import annotations
@@ -21,6 +25,9 @@ GTF_BASE = "https://www.gtf.fr"
 GTF_LISTING_URL = f"{GTF_BASE}/fr/louer-liste-des-biens"
 
 _DETAIL_RE = re.compile(r"/fr/bien-immobilier-.*?-(\d{3,})$")
+# Any French postcode (01xxx–98xxx); the look-behind skips refs like "A-05073".
+_POSTCODE_RE = re.compile(r"(?<![\d-])((?:0[1-9]|[1-8]\d|9[0-8])\d{3})(?!\d)")
+_SLUG_POSTCODE_RE = re.compile(r"-((?:0[1-9]|[1-8]\d|9[0-8])\d{3})-")
 
 _HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
@@ -54,7 +61,11 @@ class GtfScraper(BaseScraper):
                 continue
             seen.add(ext_id)
             full_url = href if href.startswith("http") else f"{GTF_BASE}{href}"
-            entries.append({"external_id": ext_id, "url": full_url})
+            entry = {"external_id": ext_id, "url": full_url}
+            pc = _SLUG_POSTCODE_RE.search(href)
+            if pc:
+                entry["postal_code"] = pc.group(1)
+            entries.append(entry)
 
         return entries
 
@@ -79,8 +90,10 @@ class GtfScraper(BaseScraper):
         if rooms is None and re.search(r"\bstudio\b", title + " " + body, re.I):
             rooms = 1
 
-        postcode_m = re.search(r"\b(75\d{3})\b", body)
-        postcode = postcode_m.group(1) if postcode_m else None
+        # The listing's own postcode comes first ("NEUILLY SUR SEINE (92200)");
+        # the footer carries the agency's (75009).
+        postcode_m = _POSTCODE_RE.search(body)
+        postcode = entry.get("postal_code") or (postcode_m.group(1) if postcode_m else None)
 
         furnished = None
         if "meuble" in url.lower() or re.search(r"\bmeubl[ée]\b", body, re.I):
