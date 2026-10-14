@@ -1,0 +1,132 @@
+# Paris Flat Hunter — search criteria
+# Edit freely; reloaded by the app at startup.
+
+property:
+  types:
+    preferred: [T3]
+    acceptable: [T2]
+  min_surface:
+    T3: 45
+    T2: 40
+  max_rent_cc: 1901
+  furnished: false
+  floor:
+    no_ground_floor: true
+    elevator_required_above: 4
+
+zones:
+  # Broad include: every Paris arrondissement except 8, 15, 16, 19.
+  # The 20e is gated by proximity to a well-served metro station.
+  include:
+    # Paris centre — historiques
+    - code: "75001"
+    - code: "75002"
+    - code: "75003"
+    - code: "75004"
+    - code: "75005"
+      exclude_touristic: true
+      touristic_bbox:
+        min_lat: 48.8430
+        max_lat: 48.8510
+        min_lon: 2.3400
+        max_lon: 2.3520
+    - code: "75006"
+    - code: "75007"
+    - code: "75009"
+    - code: "75010"
+    - code: "75011"
+    - code: "75012"
+    - code: "75013"
+    - code: "75014"
+      exclude_touristic: true
+      touristic_bbox:
+        min_lat: 48.820
+        max_lat: 48.831
+        min_lon: 2.310
+        max_lon: 2.345
+    - code: "75017"
+    - code: "75018"
+      # Nord du 18e (au-dessus de Jules Joffrin / Marcadet, vers les portes) =
+      # trop loin. On exclut cette bande nord — MAIS seulement si on a les
+      # coords ; sans coords (info morte), l'annonce passe et tu vérifies.
+      exclude_touristic: true
+      touristic_bbox:
+        min_lat: 48.892
+        max_lat: 48.910
+        min_lon: 2.300
+        max_lon: 2.400
+    - code: "75020"
+      require_well_connected_metro: true
+  # Line-14 expansion: accept any Paris intramuros listing within 5 min walk of
+  # a line-14 station, even if its arrondissement is not in `include` above.
+  # Stations covered (2026): Porte de Clichy, Pont Cardinet, Saint-Lazare,
+  # Madeleine, Pyramides, Châtelet, Gare de Lyon, Bercy, Cour Saint-Émilion,
+  # Bibliothèque François Mitterrand, Olympiades.
+  line14_proximity:
+    enabled: true
+    max_walk_minutes: 5.0
+
+excludes:
+  - colocation
+  - sous-location
+  - courte-duree
+  - meuble
+
+gem_criteria:
+  must_have_signals:
+    - cachet_parisien   # parquet, moulures, cheminée, HSP
+  nice_to_have:
+    - refait_a_neuf
+    - tres_lumineux
+    - balcon
+    - etage_eleve
+    - calme
+    - vue_degagee
+    - cave
+
+red_flags:
+  - photos_floues
+  - peu_de_photos
+  # absence_de_plan supprimé — le plan est rare dans les annonces de location
+  # (essentiellement présent à la vente). Pas un signal pertinent ici.
+  - description_bacelee
+  - prix_anormalement_bas
+  - vis_a_vis_proche
+  - travaux_a_prevoir
+  - humidite
+  - bruit
+
+scoring:
+  alert_threshold: 63
+  urgent_threshold: 85
+  price_drop_alert: true
+  min_price_drop_pct: 3.0
+
+# Per-arrondissement rent/m² floors used by the scam detector. Leave empty to
+# use the built-in 2026 defaults (see src/config.py DEFAULT_EUR_PER_M2_FLOOR).
+# Override any arrondissement explicitly below if the local market has moved.
+market_prices:
+  default_eur_per_m2: 28.0
+  # eur_per_m2:
+  #   11: 29.0
+  #   3: 39.0
+  # Per-quartier refinements (checked BEFORE the per-arr floor). Each entry
+  # matches when the listing is in `arrondissement` AND any of `keywords`
+  # appears in title / description / address (case + accent insensitive).
+  quartiers:
+    - arrondissement: 11
+      name: "Oberkampf / République"
+      eur_per_m2: 31.0
+      keywords: ["oberkampf", "republique", "parmentier", "saint-ambroise"]
+    - arrondissement: 12
+      name: "Bastille / Gare de Lyon"
+      eur_per_m2: 30.0
+      keywords: ["bastille", "gare de lyon", "ledru-rollin", "reuilly"]
+    - arrondissement: 10
+      name: "Canal Saint-Martin"
+      eur_per_m2: 32.0
+      keywords: ["canal saint-martin", "canal st martin", "republique", "gare de l est"]
+    - arrondissement: 9
+      name: "Grands Boulevards / Opéra"
+      eur_per_m2: 35.0
+      keywords: ["grands boulevards", "opera", "chaussee d antin", "saint-georges"]

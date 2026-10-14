@@ -1,0 +1,46 @@
+# Dev overrides — Docker Compose auto-merges this with docker-compose.yml.
+#
+# Effects:
+#   1. Builds images with INSTALL_DEV=1 so pytest, ruff, mypy are available
+#      inside the scraper + api containers. Run tests with:
+#          docker compose exec scraper pytest -q
+#   2. Live-mounts src/, tests/, config/ and migrations/ from the host so
+#      Python code changes are visible in the container instantly (no rebuild).
+#      You still need to restart the process for Python to re-import:
+#          docker compose restart scraper
+#      Alembic migration files are mounted too, so `alembic upgrade head`
+#      picks up new revisions on container start.
+#
+# To disable the override for a run (to mimic prod):
+#     docker compose -f docker-compose.yml up -d
+services:
+  scraper:
+    build:
+      context: .
+      args:
+        INSTALL_DEV: "1"
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./config:/app/config
+      - ./migrations:/app/migrations
+      - ./scripts:/app/scripts
+      - ./pyproject.toml:/app/pyproject.toml
+
+  api:
+    build:
+      context: .
+      args:
+        INSTALL_DEV: "1"
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+
+  migrate:
+    build:
+      context: .
+      args:
+        INSTALL_DEV: "1"
+    volumes:
+      - ./migrations:/app/migrations
+      - ./src:/app/src

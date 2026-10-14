@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pfh}
+      POSTGRES_USER: ${POSTGRES_USER:-pfh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pfh}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pfh} -d ${POSTGRES_DB:-pfh}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+    command: ["python", "-m", "src.main", "api"]
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx,sys; r=httpx.get('http://127.0.0.1:8000/health'); sys.exit(0 if r.status_code==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+  scraper:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+    command: ["python", "-m", "src.main", "scheduler"]
+    restart: unless-stopped
+    shm_size: 1gb  # Playwright/Chromium likes this
+    # Use public resolvers — host's ISP DNS NXDOMAINs api.scrapfly.io (and
+    # likely other hosts). Google + Cloudflare resolve fine.
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    volumes:
+      - ./logs:/app/logs
+      - playwright_state:/app/.playwright
+
+  bot:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+    command: ["python", "-m", "src.bot"]
+    restart: unless-stopped
+    # Needs outbound DNS to api.telegram.org + api.anthropic.com.
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    volumes:
+      - ./logs:/app/logs
+
+volumes:
+  pg_data:
+  playwright_state:
