@@ -81,3 +81,17 @@ def test_prefilter_fails_on_excluded_keyword(criteria_yaml):
     decision, reasons = hard_prefilter(_listing(description="Idéal pour colocation à 3."), c)
     assert decision is False
     assert any("colocation" in r for r in reasons)
+
+
+def test_mentions_ignores_negated_keywords():
+    from src.scoring.hard_filter import _mentions
+
+    assert _mentions("salle de bains avec baignoire", "baignoire")
+    assert _mentions("baignoire douche et wc separe", "baignoire")
+    assert not _mentions("salle d eau sans baignoire", "baignoire")
+    assert not _mentions("pas de baignoire douche italienne", "baignoire")
+    assert not _mentions("la baignoire a ete remplacee par une douche", "baignoire")
+    assert not _mentions("studio non meuble lumineux", "meuble")
+    assert _mentions("studio meuble lumineux", "meuble")
+    # Word boundary: "immeuble" is not "meuble".
+    assert not _mentions("bel immeuble ancien", "meuble")

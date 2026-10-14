@@ -119,6 +119,7 @@ excludes:
   - meuble
   - residence etudiante
   - residence services
+  - baignoire           # douche uniquement (« sans baignoire » n'exclut pas)
 
 gem_criteria:
   must_have_signals:
@@ -145,6 +146,7 @@ red_flags:
   - sous_sol_ou_entresol
   - kitchenette_minuscule
   - surface_loi_carrez_douteuse
+  - baignoire
 
 scoring:
   alert_threshold: 63

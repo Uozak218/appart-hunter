@@ -25,6 +25,24 @@ from src.models.listing import Listing
 from src.utils.geo import is_in_target_zone
 from src.utils.hashing import normalise_text
 
+_NEGATION_BEFORE = re.compile(r"\b(sans|pas de|pas d|ni|aucune|aucun|non|plus de)\s+(\w+\s+){0,2}$")
+_NEGATION_AFTER = re.compile(r"^\s+(\w+\s+){0,2}(remplacee|remplace|transformee|supprimee)\b")
+
+
+def _mentions(blob: str, kw_norm: str) -> bool:
+    """True if ``kw_norm`` appears in ``blob`` at least once without a negation.
+
+    "sans baignoire", "pas de colocation", "baignoire remplacée par une douche"
+    are not mentions; "salle de bains avec baignoire" is.
+    """
+    for m in re.finditer(rf"\b{re.escape(kw_norm)}\b", blob):
+        before = blob[max(0, m.start() - 40) : m.start()]
+        after = blob[m.end() : m.end() + 40]
+        if _NEGATION_BEFORE.search(before) or _NEGATION_AFTER.search(after):
+            continue
+        return True
+    return False
+
 
 def hard_prefilter(listing: Listing, criteria: SearchCriteria) -> tuple[bool | None, list[str]]:
     reasons: list[str] = []
@@ -94,12 +112,13 @@ def hard_prefilter(listing: Listing, criteria: SearchCriteria) -> tuple[bool | N
     ):
         return False, [f"floor {listing.floor} > {rules.elevator_required_above} without elevator"]
 
-    # Excludes keywords (colocation, sous-location, courte-duree, ...)
-    # Word-boundary match to avoid false positives (e.g. "meuble" in "immeuble").
+    # Excludes keywords (colocation, sous-location, courte-duree, baignoire...)
+    # Word-boundary match to avoid false positives (e.g. "meuble" in "immeuble"),
+    # and negated mentions ("sans baignoire", "non meublé") don't count.
     blob = normalise_text(" ".join(filter(None, [listing.title, listing.description])))
     for kw in criteria.excludes:
         kw_norm = normalise_text(kw)
-        if kw_norm and re.search(rf"\b{re.escape(kw_norm)}\b", blob):
+        if kw_norm and _mentions(blob, kw_norm):
             return False, [f"excluded keyword: {kw}"]
 
     # Got this far — it's a pass. If any field was borderline, still pass.

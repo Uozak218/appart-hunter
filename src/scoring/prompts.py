@@ -15,7 +15,7 @@ import json
 
 from src.config import SearchCriteria
 
-PROMPT_VERSION = "2026-10-14.2"  # size-first studio rubric, ≤40 min commute to Levallois
+PROMPT_VERSION = "2026-10-14.3"  # size-first studio rubric, ≤40 min commute to Levallois
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +200,10 @@ Règles clés :
 8. Utilise TOUTES les photos fournies. S'il y en a moins de 3, cap le score
    à 65.
 9. N'invente jamais de caractéristiques que tu ne peux pas voir.
+   **Baignoire = rédhibitoire.** L'utilisateur ne veut AUCUN logement avec
+   baignoire (douche uniquement). Si une baignoire est visible sur une photo ou
+   mentionnée dans le texte (y compris « baignoire-douche »), cap le score à 30
+   et ajoute le red_flag ``baignoire``. Salle d'eau avec douche visible = OK.
 10. Signaux d'arnaque visibles en photo : matelas au sol + valise ouverte,
    photos de magazine, retouches évidentes, mobilier identique à d'autres
    arnaques connues, logement de luxe à prix cassé. Si tu en repères, cap le
