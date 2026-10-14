@@ -65,5 +65,15 @@ def test_discord_embed_structure():
     s = _scored()
     e = discord_embed(s)
     assert e["url"].startswith("https://")
-    assert any(f["name"] == "Prix (CC)" for f in e["fields"])
+    assert any(f["name"] == "Loyer" for f in e["fields"])
     assert e["image"]["url"].startswith("https://")
+
+
+def test_fmt_rent_spells_out_charges():
+    from src.notifier.templates import fmt_rent
+
+    assert (
+        fmt_rent(758, 173) == "758 € charges comprises (dont 173 € de charges → 585 € hors charges)"
+    )
+    assert fmt_rent(750, None) == "750 € charges comprises (montant des charges non précisé)"
+    assert fmt_rent(None, None) == "— €"

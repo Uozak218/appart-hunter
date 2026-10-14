@@ -22,6 +22,17 @@ def fmt_price(v: float | None) -> str:
     return f"{int(round(v))} € CC" if v else "— €"
 
 
+def fmt_rent(rent_cc: float | None, charges: float | None) -> str:
+    """'758 € charges comprises (dont 173 € de charges → 585 € hors charges)'."""
+    if not rent_cc:
+        return "— €"
+    total = f"{int(round(rent_cc))} € charges comprises"
+    if charges:
+        hc = int(round(rent_cc - charges))
+        return f"{total} (dont {int(round(charges))} € de charges → {hc} € hors charges)"
+    return f"{total} (montant des charges non précisé)"
+
+
 def fmt_surface(v: float | None) -> str:
     return f"{v:.0f} m²" if v else "— m²"
 
@@ -80,7 +91,9 @@ def telegram_message(listing: ScoredListing) -> str:
         "",
         *badge_lines,
         f"📍 {_fmt_arrondissement(r.postal_code)}" + (f" — {r.address}" if r.address else ""),
-        f"💶 {_fmt_price(r.rent_cc)}  ·  📐 {_fmt_surface(r.surface_m2)}"
+        f"💶 {fmt_rent(r.rent_cc, r.charges)}",
+        f"📐 {_fmt_surface(r.surface_m2)}"
+        + (f" · {r.rent_cc / r.surface_m2:.1f} €/m²" if r.rent_cc and r.surface_m2 else "")
         + (f"  ·  🧱 {r.property_type}" if r.property_type else ""),
     ]
     floor_bits = []
@@ -125,8 +138,8 @@ def discord_embed(listing: ScoredListing) -> dict:
 
     fields = [
         {
-            "name": "Prix (CC)",
-            "value": _fmt_price(r.rent_cc),
+            "name": "Loyer",
+            "value": fmt_rent(r.rent_cc, r.charges),
             "inline": True,
         },
         {

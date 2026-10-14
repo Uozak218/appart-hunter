@@ -12,7 +12,7 @@ from __future__ import annotations
 import httpx
 
 from src.config import get_settings
-from src.notifier.templates import SOURCE_LABEL, fmt_arrondissement, fmt_price, fmt_surface
+from src.notifier.templates import SOURCE_LABEL, fmt_arrondissement, fmt_rent, fmt_surface
 from src.schemas.listing import ScoredListing
 from src.utils.logging import logger
 
@@ -47,7 +47,7 @@ class NtfyNotifier:
         body = (
             f"{r.title}\n"
             f"{fmt_arrondissement(r.postal_code)} · "
-            f"{fmt_price(r.rent_cc)} · {fmt_surface(r.surface_m2)}"
+            f"{fmt_rent(r.rent_cc, r.charges)} · {fmt_surface(r.surface_m2)}"
         )
         if listing.highlights:
             body += "\n+ " + " · ".join(listing.highlights[:3])
