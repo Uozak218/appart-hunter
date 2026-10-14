@@ -113,3 +113,12 @@ def test_commute_distance_exact_vs_town_centre():
     km, exact = commute_distance_km(c, postcode="92700", lat=48.8874, lon=2.2855)
     assert exact and km < 0.1
     assert commute_distance_km(c, postcode="75011", lat=None, lon=None) is None
+
+
+def test_estimate_commute_minutes():
+    from src.utils.geo import estimate_commute_minutes
+
+    assert estimate_commute_minutes(0.8) == (10, "à pied")
+    assert estimate_commute_minutes(5.0)[1] == "en transports"
+    assert 27 <= estimate_commute_minutes(5.0)[0] <= 32
+    assert 48 <= estimate_commute_minutes(18.4)[0] <= 55

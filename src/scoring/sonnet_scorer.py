@@ -26,7 +26,7 @@ from src.scoring.prompts import (
     tool_input_from_response,
 )
 from src.scoring.sanitize import sanitize_description, sanitize_title
-from src.utils.geo import commute_distance_km
+from src.utils.geo import commute_distance_km, estimate_commute_minutes
 from src.utils.logging import logger
 from src.utils.urls import is_safe_photo_url
 
@@ -172,7 +172,12 @@ def _commute_fields(listing: Listing) -> dict[str, Any]:
     if res is None:
         return {}
     km, exact = res
-    return {"distance_travail_km": round(km, 1), "distance_travail_exacte": exact}
+    minutes, _ = estimate_commute_minutes(km)
+    return {
+        "distance_travail_km": round(km, 1),
+        "distance_travail_exacte": exact,
+        "trajet_estime_min": minutes,
+    }
 
 
 class SonnetScorer:

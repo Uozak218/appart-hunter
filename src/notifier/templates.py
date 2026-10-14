@@ -36,7 +36,7 @@ def fmt_rent(rent_cc: float | None, charges: float | None) -> str:
 def fmt_commute(postcode: str | None, lat: float | None, lon: float | None) -> str | None:
     """'📏 3,1 km du 14 rue Chaptal' — '≈' when measured from the town centre."""
     from src.config import get_criteria
-    from src.utils.geo import commute_distance_km
+    from src.utils.geo import commute_distance_km, estimate_commute_minutes
 
     criteria = get_criteria()
     res = commute_distance_km(criteria, postcode=postcode, lat=lat, lon=lon)
@@ -45,9 +45,11 @@ def fmt_commute(postcode: str | None, lat: float | None, lon: float | None) -> s
     km, exact = res
     dist = f"{km:.1f}".replace(".", ",")
     where = criteria.commute_to.label
+    minutes, mode = estimate_commute_minutes(km)
+    eta = f"⏱️ ~{minutes} min {mode} (estimation d'après la distance)"
     if exact:
-        return f"📏 {dist} km du {where} (à vol d'oiseau)"
-    return f"📏 ≈ {dist} km du {where} (depuis le centre-ville, adresse exacte inconnue)"
+        return f"📏 {dist} km du {where} (à vol d'oiseau)\n{eta}"
+    return f"📏 ≈ {dist} km du {where} (depuis le centre-ville, adresse exacte inconnue)\n{eta}"
 
 
 def fmt_surface(v: float | None) -> str:

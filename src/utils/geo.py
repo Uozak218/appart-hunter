@@ -139,3 +139,17 @@ def commute_distance_km(
     if rule is not None and rule.lat is not None and rule.lon is not None:
         return haversine_meters(rule.lat, rule.lon, target.lat, target.lon) / 1000, False
     return None
+
+
+def estimate_commute_minutes(km: float) -> tuple[int, str]:
+    """Rough door-to-door time from straight-line distance alone.
+
+    Walking under 1.5 km (~12 min/km). Beyond, public transport in the inner
+    suburbs: walk to the station + wait + ride grows sub-linearly with distance
+    (4 + 11·√km — ~20 min at 2-3 km, ~30 at 5, ~35 at 8, ~50 at 18). No
+    timetable involved: a listing next to a direct train beats it, one served
+    only by bus is slower.
+    """
+    if km <= 1.5:
+        return max(1, round(km * 12)), "à pied"
+    return round(4 + 11 * km**0.5), "en transports"

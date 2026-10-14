@@ -15,7 +15,7 @@ import json
 
 from src.config import SearchCriteria
 
-PROMPT_VERSION = "2026-10-14.5"  # size-first studio rubric, ≤40 min commute to Levallois
+PROMPT_VERSION = "2026-10-14.6"  # size-first studio rubric, ≤40 min commute to Levallois
 
 
 # ---------------------------------------------------------------------------
@@ -171,7 +171,9 @@ Règles clés :
    M3 Anatole France / Louise Michel, gare Transilien L Clichy-Levallois).
    Les métadonnées donnent ``distance_travail_km`` (à vol d'oiseau ; si
    ``distance_travail_exacte`` est false, elle est mesurée depuis le centre de
-   la ville). Juge en **temps de trajet**, pas seulement en distance : une gare à 5 min à pied avec un train direct vaut mieux qu'un
+   la ville) et ``trajet_estime_min`` (estimation grossière tirée de la seule
+distance). Juge en **temps de trajet** — affine cette estimation avec ce que
+l'annonce dit des transports — pas seulement en distance : une gare à 5 min à pied avec un train direct vaut mieux qu'un
    logement plus proche mais desservi seulement par bus. Repères :
    Levallois / Clichy / Asnières / Courbevoie-Bécon / Bois-Colombes (≤ 20 min) >
    Saint-Ouen / Gennevilliers / La Garenne / Colombes / Saint-Denis Pleyel-Plaine
