@@ -97,3 +97,19 @@ def test_sub_area_falls_back_to_keywords_without_coords():
     assert is_in_target_zone(c, postcode="93200", text="La Plaine Saint-Denis")
     assert not is_in_target_zone(c, postcode="93200", text="Studio centre-ville")
     assert not is_in_target_zone(c, postcode="93200")
+
+
+def test_commute_distance_exact_vs_town_centre():
+    from src.utils.geo import commute_distance_km
+
+    c = SearchCriteria.model_validate(
+        {
+            "commute_to": {"label": "bureau", "lat": 48.887365, "lon": 2.285444},
+            "zones": {"include": [{"code": "92700", "lat": 48.9227, "lon": 2.2522}]},
+        }
+    )
+    km, exact = commute_distance_km(c, postcode="92700", lat=None, lon=None)
+    assert not exact and 4.0 < km < 5.5
+    km, exact = commute_distance_km(c, postcode="92700", lat=48.8874, lon=2.2855)
+    assert exact and km < 0.1
+    assert commute_distance_km(c, postcode="75011", lat=None, lon=None) is None

@@ -233,6 +233,10 @@ class ZoneRule(BaseModel):
     # ``include_keywords`` appears in its title/description/address.
     include_bbox: TouristicBBox | None = None
     include_keywords: list[str] = Field(default_factory=list)
+    # Approximate centre of the zone, used for the commute distance when a
+    # listing has no coordinates of its own.
+    lat: float | None = None
+    lon: float | None = None
     exclude_touristic: bool = False
     touristic_bbox: TouristicBBox | None = None
     # When True, the listing must be within walking distance of a well-served
@@ -255,6 +259,14 @@ class Line14Proximity(BaseModel):
 class ZoneCriteria(BaseModel):
     include: list[ZoneRule] = Field(default_factory=list)
     line14_proximity: Line14Proximity = Field(default_factory=Line14Proximity)
+
+
+class CommuteTarget(BaseModel):
+    """Where the user commutes to — each listing reports its distance to it."""
+
+    label: str
+    lat: float
+    lon: float
 
 
 class GemCriteria(BaseModel):
@@ -356,6 +368,7 @@ class SearchCriteria(BaseModel):
     red_flags: list[str] = Field(default_factory=list)
     scoring: ScoringCriteria = Field(default_factory=ScoringCriteria)
     market_prices: MarketPrices = Field(default_factory=MarketPrices)
+    commute_to: CommuteTarget | None = None
 
     def allowed_zone_codes(self) -> set[str]:
         return {z.code for z in self.zones.include}

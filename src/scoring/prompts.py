@@ -15,7 +15,7 @@ import json
 
 from src.config import SearchCriteria
 
-PROMPT_VERSION = "2026-10-14.4"  # size-first studio rubric, ≤40 min commute to Levallois
+PROMPT_VERSION = "2026-10-14.5"  # size-first studio rubric, ≤40 min commute to Levallois
 
 
 # ---------------------------------------------------------------------------
@@ -167,9 +167,11 @@ Règles clés :
    le loyer au m². Un logement ≥ 28 m² à ≤ target_rent_cc dans une ville de la
    liste mérite au moins 72. Entre target_rent_cc et max_rent_cc : pas de bonus
    prix, il faut que la surface ou l'état compensent.
-3. **Le trajet jusqu'à Levallois-Perret** (M3 Anatole France / Louise Michel,
-   gare Transilien L Clichy-Levallois). Juge en **temps de trajet**, pas en
-   distance : une gare à 5 min à pied avec un train direct vaut mieux qu'un
+3. **Le trajet jusqu'au lieu de travail** (14 rue Chaptal, Levallois-Perret —
+   M3 Anatole France / Louise Michel, gare Transilien L Clichy-Levallois).
+   Les métadonnées donnent ``distance_travail_km`` (à vol d'oiseau ; si
+   ``distance_travail_exacte`` est false, elle est mesurée depuis le centre de
+   la ville). Juge en **temps de trajet**, pas seulement en distance : une gare à 5 min à pied avec un train direct vaut mieux qu'un
    logement plus proche mais desservi seulement par bus. Repères :
    Levallois / Clichy / Asnières / Courbevoie-Bécon / Bois-Colombes (≤ 20 min) >
    Saint-Ouen / Gennevilliers / La Garenne / Colombes / Saint-Denis Pleyel-Plaine

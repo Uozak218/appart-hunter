@@ -7,6 +7,7 @@ import re
 from src.config import SearchCriteria, TouristicBBox, ZoneRule
 from src.utils.hashing import normalise_text
 from src.utils.metro import (
+    haversine_meters,
     is_near_line14_station,
     is_near_well_connected_metro_20e,
     is_paris_intramuros,
@@ -114,3 +115,27 @@ def is_in_target_zone(
         and is_paris_intramuros(postcode)
         and is_near_line14_station(lat, lon, max_walk_minutes=line14.max_walk_minutes)
     )
+
+
+def commute_distance_km(
+    criteria: SearchCriteria,
+    *,
+    postcode: str | None,
+    lat: float | None,
+    lon: float | None,
+) -> tuple[float, bool] | None:
+    """Straight-line km from the listing to ``criteria.commute_to``.
+
+    Returns ``(km, exact)``: exact when the listing has coordinates, otherwise
+    measured from the zone centre declared in the YAML. ``None`` when neither
+    is available or no commute target is configured.
+    """
+    target = criteria.commute_to
+    if target is None:
+        return None
+    if lat is not None and lon is not None:
+        return haversine_meters(lat, lon, target.lat, target.lon) / 1000, True
+    rule = zone_rule_for(criteria, postcode)
+    if rule is not None and rule.lat is not None and rule.lon is not None:
+        return haversine_meters(rule.lat, rule.lon, target.lat, target.lon) / 1000, False
+    return None

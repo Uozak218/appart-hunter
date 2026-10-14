@@ -33,6 +33,23 @@ def fmt_rent(rent_cc: float | None, charges: float | None) -> str:
     return f"{total} (montant des charges non précisé)"
 
 
+def fmt_commute(postcode: str | None, lat: float | None, lon: float | None) -> str | None:
+    """'📏 3,1 km du 14 rue Chaptal' — '≈' when measured from the town centre."""
+    from src.config import get_criteria
+    from src.utils.geo import commute_distance_km
+
+    criteria = get_criteria()
+    res = commute_distance_km(criteria, postcode=postcode, lat=lat, lon=lon)
+    if res is None or criteria.commute_to is None:
+        return None
+    km, exact = res
+    dist = f"{km:.1f}".replace(".", ",")
+    where = criteria.commute_to.label
+    if exact:
+        return f"📏 {dist} km du {where} (à vol d'oiseau)"
+    return f"📏 ≈ {dist} km du {where} (depuis le centre-ville, adresse exacte inconnue)"
+
+
 def fmt_surface(v: float | None) -> str:
     return f"{v:.0f} m²" if v else "— m²"
 
@@ -91,6 +108,7 @@ def telegram_message(listing: ScoredListing) -> str:
         "",
         *badge_lines,
         f"📍 {_fmt_arrondissement(r.postal_code)}" + (f" — {r.address}" if r.address else ""),
+        *filter(None, [fmt_commute(r.postal_code, r.latitude, r.longitude)]),
         f"💶 {fmt_rent(r.rent_cc, r.charges)}",
         f"📐 {_fmt_surface(r.surface_m2)}"
         + (f" · {r.rent_cc / r.surface_m2:.1f} €/m²" if r.rent_cc and r.surface_m2 else "")

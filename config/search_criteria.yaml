@@ -19,37 +19,59 @@ property:
     no_ground_floor: true
     elevator_required_above: 4
 
+# Lieu de travail : chaque annonce affiche sa distance (à vol d'oiseau).
+commute_to:
+  label: "14 rue Chaptal, Levallois"
+  lat: 48.887365
+  lon: 2.285444
+
 zones:
   include:
     # 1er cercle — collé à Levallois
     - code: "92300"
       city: "Levallois-Perret"
       insee: "92044"
+      lat: 48.8946
+      lon: 2.2874
     - code: "92110"
       city: "Clichy"
       insee: "92024"
+      lat: 48.9041
+      lon: 2.3041
     # Nord 92
     - code: "92600"
       city: "Asnières-sur-Seine"
       insee: "92004"
+      lat: 48.9181
+      lon: 2.2935
     - code: "92270"
       city: "Bois-Colombes"
       insee: "92009"
+      lat: 48.9151
+      lon: 2.2688
     - code: "92250"
       city: "La Garenne-Colombes"
       insee: "92035"
+      lat: 48.9071
+      lon: 2.2437
     - code: "92700"
       city: "Colombes"
       insee: "92025"
+      lat: 48.9218
+      lon: 2.2469
     # 93 — accès M13 / M14
     - code: "93400"
       city: "Saint-Ouen-sur-Seine"
       insee: "93070"
+      lat: 48.9118
+      lon: 2.3329
     # Saint-Denis : uniquement Pleyel / Stade de France / La Plaine (quartiers
     # neufs autour de la M14 et du RER D). Le reste de la ville est exclu.
     - code: "93200"
       city: "Saint-Denis"
       insee: "93066"
+      lat: 48.9150
+      lon: 2.3525
       areas: ["Pleyel", "Stade de France", "La Plaine"]
       include_bbox:
         min_lat: 48.900
@@ -68,15 +90,21 @@ zones:
     - code: "93210"
       city: "Saint-Denis"
       insee: "93066"
+      lat: 48.9378
+      lon: 2.3657
       areas: ["La Plaine Saint-Denis"]
     # 2e couronne de trajet (~20-40 min) — plus de m² pour le budget
     - code: "92230"
       city: "Gennevilliers"
       insee: "92036"
+      lat: 48.9319
+      lon: 2.2880
     # Courbevoie : uniquement le côté Bécon-les-Bruyères (pas La Défense).
     - code: "92400"
       city: "Courbevoie"
       insee: "92026"
+      lat: 48.9055
+      lon: 2.2700
       areas: ["Bécon-les-Bruyères"]
       include_bbox:
         min_lat: 48.899
@@ -89,25 +117,39 @@ zones:
     - code: "92390"
       city: "Villeneuve-la-Garenne"
       insee: "92078"
+      lat: 48.9354
+      lon: 2.3231
     - code: "92000"
       city: "Nanterre"
       insee: "92050"
+      lat: 48.8974
+      lon: 2.2018
     - code: "92500"
       city: "Rueil-Malmaison"
       insee: "92063"
+      lat: 48.8717
+      lon: 2.1806
     - code: "95100"
       city: "Argenteuil"
       insee: "95018"
+      lat: 48.9501
+      lon: 2.2478
     - code: "78800"
       city: "Houilles"
       insee: "78311"
+      lat: 48.9266
+      lon: 2.1866
     - code: "78500"
       city: "Sartrouville"
       insee: "78586"
+      lat: 48.9374
+      lon: 2.1744
     # ~45-50 min estimés (Transilien U → La Défense → L) — gardé à la demande.
     - code: "78210"
       city: "Saint-Cyr-l'École"
       insee: "78545"
+      lat: 48.8064
+      lon: 2.0657
   # Pas de Paris : la ligne 14 « intramuros » ne s'applique pas ici.
   line14_proximity:
     enabled: false

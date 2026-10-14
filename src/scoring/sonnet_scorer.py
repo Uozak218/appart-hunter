@@ -14,7 +14,7 @@ from typing import Any
 import httpx
 from anthropic import AsyncAnthropic
 
-from src.config import SearchCriteria, get_settings
+from src.config import SearchCriteria, get_criteria, get_settings
 from src.models.listing import Listing
 from src.scoring.budget import AnthropicUsage, BudgetManager
 from src.scoring.haiku_filter import _safe_json
@@ -26,6 +26,7 @@ from src.scoring.prompts import (
     tool_input_from_response,
 )
 from src.scoring.sanitize import sanitize_description, sanitize_title
+from src.utils.geo import commute_distance_km
 from src.utils.logging import logger
 from src.utils.urls import is_safe_photo_url
 
@@ -157,7 +158,21 @@ def _listing_payload(listing: Listing) -> dict[str, Any]:
         "arrondissement": listing.arrondissement,
         "address": listing.address,
         "n_photos": len(listing.photos),
+        **_commute_fields(listing),
     }
+
+
+def _commute_fields(listing: Listing) -> dict[str, Any]:
+    res = commute_distance_km(
+        get_criteria(),
+        postcode=listing.postal_code,
+        lat=getattr(listing, "latitude", None),
+        lon=getattr(listing, "longitude", None),
+    )
+    if res is None:
+        return {}
+    km, exact = res
+    return {"distance_travail_km": round(km, 1), "distance_travail_exacte": exact}
 
 
 class SonnetScorer:
