@@ -55,7 +55,9 @@ DEFAULT_EXCLUDES = "meuble, colocation, sous-location, courte-duree"
 DEFAULT_THRESHOLD = 70
 
 
-def _criteria_template(budget: int, surface: int, types: list[str], arrs: list[str], excludes: list[str]) -> dict:
+def _criteria_template(
+    budget: int, surface: int, types: list[str], arrs: list[str], excludes: list[str]
+) -> dict:
     """Build the criteria dict matching ``config.SearchCriteria`` shape."""
     min_surface = {t: float(surface) for t in types}
     return {
@@ -99,7 +101,10 @@ async def start_wizard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     factory = get_session_factory()
     async with factory() as s:
         user, created = await get_or_create_user(
-            s, chat.id, user_tg.username if user_tg else None, user_tg.first_name if user_tg else None
+            s,
+            chat.id,
+            user_tg.username if user_tg else None,
+            user_tg.first_name if user_tg else None,
         )
         await set_wizard_step(s, user, WizardStep.ask_key)
         await s.commit()
@@ -264,10 +269,7 @@ async def handle_arrs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 async def handle_excludes(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = (update.message.text or "").strip()
-    if text.lower() in ("ok", "défaut", "default"):
-        excludes_str = DEFAULT_EXCLUDES
-    else:
-        excludes_str = text
+    excludes_str = DEFAULT_EXCLUDES if text.lower() in ("ok", "défaut", "default") else text
     excludes = [e.strip().lower() for e in excludes_str.split(",") if e.strip()]
     context.user_data["excludes"] = excludes
     await update.message.reply_text(

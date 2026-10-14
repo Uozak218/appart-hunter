@@ -74,11 +74,7 @@ def compose_body(message: str, dossier_url: str) -> str:
 
 
 def _receipt(listing: Listing, email: str, draft: ContactDraft, body: str, *, live: bool) -> str:
-    head = (
-        "✅ *Candidature ENVOYÉE*"
-        if live
-        else "🧪 *\\[TEST] Candidature prête (non envoyée)*"
-    )
+    head = "✅ *Candidature ENVOYÉE*" if live else "🧪 *\\[TEST] Candidature prête (non envoyée)*"
     arr = f"Paris {listing.arrondissement}e" if listing.arrondissement else "Paris"
     rent = f"{int(listing.rent_cc)} €" if listing.rent_cc else "— €"
     to_line = "📧 envoyée à" if live else "📧 aurait été envoyée à"

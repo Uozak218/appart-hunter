@@ -89,6 +89,7 @@ async def _build_context() -> str:
 
         # Sources actives
         from src.scrapers import SCRAPER_REGISTRY
+
         sources = sorted(SCRAPER_REGISTRY.keys())
 
         # Top 5 all-time pépites
@@ -176,13 +177,14 @@ async def cmd_demande(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                     "cache_control": {"type": "ephemeral"},
                 }
             ],
-            messages=[
-                {"role": "user", "content": f"{ctx_block}\n\nQuestion: {question}"}
-            ],
+            messages=[{"role": "user", "content": f"{ctx_block}\n\nQuestion: {question}"}],
         )
-        answer = "".join(
-            getattr(b, "text", "") for b in resp.content if getattr(b, "type", None) == "text"
-        ).strip() or "(pas de réponse)"
+        answer = (
+            "".join(
+                getattr(b, "text", "") for b in resp.content if getattr(b, "type", None) == "text"
+            ).strip()
+            or "(pas de réponse)"
+        )
     except Exception as exc:  # noqa: BLE001
         logger.exception(f"/demande failed: {exc}")
         await msg.reply_text(f"🥲 Erreur côté Claude : `{str(exc)[:120]}`", parse_mode="Markdown")

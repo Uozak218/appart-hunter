@@ -129,9 +129,7 @@ class BaseScraper(ABC):
         m = _POSTCODE_RE.search(url)
         return m.group(1) if m else None
 
-    def _pre_filter_zone(
-        self, entries: list[dict[str, Any]]
-    ) -> tuple[list[dict[str, Any]], int]:
+    def _pre_filter_zone(self, entries: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
         """Drop entries whose postcode is provably out-of-zone — *before* paying
         for a detail fetch. Conservative: when we can't determine the postcode,
         the entry is kept (the existing post-detail zone gate still runs)."""
@@ -187,9 +185,7 @@ class BaseScraper(ABC):
                     raw = await self._fetch_detail(ctx, entry)
                 except Exception as exc:  # noqa: BLE001
                     outcome.errors.append(f"{entry.get('external_id')}: {exc}")
-                    logger.warning(
-                        f"[{self.source}] detail parse failed {entry.get('url')}: {exc}"
-                    )
+                    logger.warning(f"[{self.source}] detail parse failed {entry.get('url')}: {exc}")
                     raw = None
                 if use_delay:
                     await self._delay()

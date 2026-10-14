@@ -17,9 +17,7 @@ from src.utils.crypto import encrypt
 
 
 async def get_user_by_chat(session: AsyncSession, chat_id: int | str) -> User | None:
-    r = await session.execute(
-        select(User).where(User.telegram_chat_id == str(chat_id))
-    )
+    r = await session.execute(select(User).where(User.telegram_chat_id == str(chat_id)))
     return r.scalar_one_or_none()
 
 

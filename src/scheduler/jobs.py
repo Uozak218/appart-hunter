@@ -138,9 +138,7 @@ async def run_scraper(source: str) -> None:
 
             if not await _passes_zone_gate(raw, criteria):
                 stats["out_of_zone"] += 1
-                await _persist_seen_rejected(
-                    listing_repo, session, raw, ListingStatus.filtered_out
-                )
+                await _persist_seen_rejected(listing_repo, session, raw, ListingStatus.filtered_out)
                 continue
 
             # Look for cross-site dups with the same dedup bucket
@@ -160,9 +158,7 @@ async def run_scraper(source: str) -> None:
             dup = find_duplicate(raw, dedup_candidates_by_raw[key])
             if dup is not None:
                 stats["cross_site_dup"] += 1
-                await _persist_seen_rejected(
-                    listing_repo, session, raw, ListingStatus.filtered_out
-                )
+                await _persist_seen_rejected(listing_repo, session, raw, ListingStatus.filtered_out)
                 continue
 
             listing, created, price_changed = await listing_repo.upsert(raw)
@@ -258,7 +254,9 @@ async def _score_and_notify(listing_id: int, notifier: NotificationQueue) -> Non
         return
 
     from sqlalchemy.orm import selectinload as _selectinload
-    from src.models.user import User as _User, UserStatus as _UserStatus
+
+    from src.models.user import User as _User
+    from src.models.user import UserStatus as _UserStatus
 
     async with factory() as session:
         result = await session.execute(
@@ -286,6 +284,7 @@ async def _score_for_user(user, listing_id: int) -> None:
     """
     from anthropic import AsyncAnthropic
     from cryptography.fernet import InvalidToken
+
     from src.config import SearchCriteria
     from src.notifier.telegram import TelegramNotifier
     from src.scoring.pipeline import ScoringPipeline

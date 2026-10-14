@@ -62,9 +62,7 @@ class ScrapflyContext:
         self._country = country
 
     async def new_page(self) -> ScrapflyPage:
-        return ScrapflyPage(
-            render_js=self._render_js, asp=self._asp, country=self._country
-        )
+        return ScrapflyPage(render_js=self._render_js, asp=self._asp, country=self._country)
 
     async def close(self) -> None:
         return None
@@ -92,9 +90,7 @@ class ScrapflyBrowser:
         self._country = country
 
     async def __aenter__(self) -> ScrapflyContext:
-        self._ctx = ScrapflyContext(
-            render_js=self._render_js, asp=self._asp, country=self._country
-        )
+        self._ctx = ScrapflyContext(render_js=self._render_js, asp=self._asp, country=self._country)
         return self._ctx
 
     async def __aexit__(self, exc_type, exc, tb) -> None:

@@ -10,6 +10,7 @@ Static HTML, zéro anti-bot → HTTP-only (no Chromium, no Scrapfly).
 
 from __future__ import annotations
 
+import contextlib
 import re
 
 import httpx
@@ -69,9 +70,7 @@ class ParisGestionScraper(BaseScraper):
             seen.add(ext)
             if href.startswith("/"):
                 href = PGI_BASE + href
-            entries.append(
-                {"external_id": ext, "url": href, "postal_code": postcode}
-            )
+            entries.append({"external_id": ext, "url": href, "postal_code": postcode})
         return entries
 
     async def parse_detail(self, page, entry: dict[str, str]) -> RawListing | None:  # noqa: ARG002
@@ -131,8 +130,6 @@ class ParisGestionScraper(BaseScraper):
                     cleaned = num.replace(".", "")
                 else:
                     cleaned = num
-                try:
+                with contextlib.suppress(ValueError):
                     raw.rent_cc = float(cleaned)
-                except ValueError:
-                    pass
         return raw

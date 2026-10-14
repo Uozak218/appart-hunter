@@ -146,13 +146,14 @@ class TelegramNotifier:
                 ),
                 return_exceptions=True,
             )
-            photo_sent = any(
-                isinstance(r, dict) and r.get("ok") for r in results
-            )
+            photo_sent = any(isinstance(r, dict) and r.get("ok") for r in results)
             # Fallback: download and upload as file (some CDNs block Telegram's fetch).
             if not photo_sent:
                 photo_sent = await self._send_photo_upload(
-                    photo_url, caption, keyboard, not listing.is_urgent,
+                    photo_url,
+                    caption,
+                    keyboard,
+                    not listing.is_urgent,
                 )
             if photo_sent and remainder:
                 await self._broadcast(

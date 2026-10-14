@@ -34,9 +34,7 @@ _MAX_LISTING_PAGES = 15
 
 # Detail URL: /location/paris-750XX/appartement/123456789.htm
 #         or  /location/paris-750XX/appartement-meuble/123456789.htm
-_DETAIL_RE = re.compile(
-    r"/location/paris-(75\d{3})/(appartement(?:-meuble)?)/(\d{7,})\.htm"
-)
+_DETAIL_RE = re.compile(r"/location/paris-(75\d{3})/(appartement(?:-meuble)?)/(\d{7,})\.htm")
 
 
 class FonciaScraper(BaseScraper):
@@ -127,9 +125,7 @@ class FonciaScraper(BaseScraper):
 
         # Rooms — "3 pièces" / "T3" / "Studio"
         rooms = None
-        rm = re.search(r"(\d)\s*pi[èe]ces?", title, re.I) or re.search(
-            r"\bT\s?(\d)\b", title, re.I
-        )
+        rm = re.search(r"(\d)\s*pi[èe]ces?", title, re.I) or re.search(r"\bT\s?(\d)\b", title, re.I)
         if rm:
             rooms = int(rm.group(1))
         elif re.search(r"\bstudio\b", title, re.I):

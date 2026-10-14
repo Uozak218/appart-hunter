@@ -21,13 +21,11 @@ Flip ``USE_PROXIES=true`` again if a source ever needs the residential IP.
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 from curl_cffi.requests import AsyncSession
 
 from src.config import get_settings
 from src.utils.logging import logger
-
 
 _DEFAULT_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",

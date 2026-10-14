@@ -141,23 +141,23 @@ class Settings(BaseSettings):
     smtp_from_email: str = ""
 
     # Auto-application (DossierFacile). Rollout = enabled(dry-run) -> live.
-    auto_apply_enabled: bool = False   # feature on/off (drafts + Telegram receipts)
-    auto_apply_live: bool = False      # True = really SMTP-send; False = dry-run only
-    auto_apply_min_score: int = 75     # only auto-apply at/above this score
-    auto_apply_daily_cap: int = 20     # max real sends per rolling 24h (safety)
-    user_dossier_url: str = ""         # DossierFacile link injected into each application
+    auto_apply_enabled: bool = False  # feature on/off (drafts + Telegram receipts)
+    auto_apply_live: bool = False  # True = really SMTP-send; False = dry-run only
+    auto_apply_min_score: int = 75  # only auto-apply at/above this score
+    auto_apply_daily_cap: int = 20  # max real sends per rolling 24h (safety)
+    user_dossier_url: str = ""  # DossierFacile link injected into each application
 
     # Active scraping window — only scrape when listings drop & the user can act.
     # Default: Mon-Sat 08:00-19:00 (settings.tz). Cuts ~60% of the Scrapfly burn.
     scrape_window_enabled: bool = True
     scrape_window_start_hour: int = 8
-    scrape_window_end_hour: int = 19      # exclusive (last active hour is 18:xx)
-    scrape_window_last_weekday: int = 5   # Mon=0 .. Sat=5 → Sunday (6) excluded
+    scrape_window_end_hour: int = 19  # exclusive (last active hour is 18:xx)
+    scrape_window_last_weekday: int = 5  # Mon=0 .. Sat=5 → Sunday (6) excluded
 
     # Scrapfly credit guard: pause DataDome sources + Telegram-alert when the
     # billing-period burn runs ahead of a sustainable pace.
     scrapfly_guard_enabled: bool = True
-    scrapfly_guard_ratio: float = 1.5     # trip when used > 1.5x the on-pace amount
+    scrapfly_guard_ratio: float = 1.5  # trip when used > 1.5x the on-pace amount
 
     # Skip the detail fetch (and its Scrapfly cost) for listings already
     # rejectable from listing-page data — older than this many days, when the

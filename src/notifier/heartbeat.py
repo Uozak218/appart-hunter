@@ -29,8 +29,8 @@ class HeartbeatReport:
     scraper_health: list[tuple[str, int, int]]  # (source, consecutive_failures, last_count)
     claude_cost_eur_24h: float
     # New: why things got rejected + how close the survivors got.
-    top_reject_reasons: list[tuple[str, int]]   # ("meuble", 13), …
-    score_buckets: list[tuple[str, int]]        # ("70-100", 0), ("50-69", 3), …
+    top_reject_reasons: list[tuple[str, int]]  # ("meuble", 13), …
+    score_buckets: list[tuple[str, int]]  # ("70-100", 0), ("50-69", 3), …
     near_misses: list[tuple[int, str, str, str, int, float, float]]
     #   (score, source, postcode, title, rooms, surface, rent_cc)
 
@@ -161,7 +161,15 @@ async def gather_heartbeat(session: AsyncSession) -> HeartbeatReport:
         )
     ).all()
     near_misses = [
-        (int(r[0]), str(r[1] or ""), str(r[2] or "?"), str(r[3] or "")[:50], int(r[4] or 0), float(r[5] or 0), float(r[6] or 0))
+        (
+            int(r[0]),
+            str(r[1] or ""),
+            str(r[2] or "?"),
+            str(r[3] or "")[:50],
+            int(r[4] or 0),
+            float(r[5] or 0),
+            float(r[6] or 0),
+        )
         for r in nm_rows
     ]
 

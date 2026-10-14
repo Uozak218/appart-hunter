@@ -21,9 +21,9 @@ from src.storage.database import Base
 
 class UserStatus(enum.StrEnum):
     onboarding = "onboarding"  # wizard in progress, no criteria yet
-    active = "active"           # alerts ON
-    paused = "paused"           # alerts OFF (user typed /pause)
-    disabled = "disabled"       # bot disabled (key invalid / repeated 401)
+    active = "active"  # alerts ON
+    paused = "paused"  # alerts OFF (user typed /pause)
+    disabled = "disabled"  # bot disabled (key invalid / repeated 401)
 
 
 class WizardStep(enum.StrEnum):
@@ -71,7 +71,7 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    criteria: Mapped["UserCriteria | None"] = relationship(
+    criteria: Mapped[UserCriteria | None] = relationship(
         "UserCriteria", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
 

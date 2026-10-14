@@ -14,16 +14,12 @@ are available once the user has finished onboarding:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, UTC
-
-from sqlalchemy import func, select
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from src.bot.repository import get_user_by_chat, save_anthropic_key, set_status
 from src.models.user import UserStatus
 from src.storage.database import get_session_factory
-
 
 _HELP_TEXT = (
     "*Commandes disponibles*\n\n"
@@ -67,7 +63,7 @@ async def cmd_criteres(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         prop = c.get("property", {})
         zones = c.get("zones", {}).get("include", []) or []
         excludes = c.get("excludes", []) or []
-        types = (prop.get("types") or {})
+        types = prop.get("types") or {}
         types_str = ", ".join(types.get("preferred", []) + types.get("acceptable", []))
         arrs = ", ".join(z.get("code", "?")[-2:] for z in zones)
         msg = (
@@ -75,7 +71,7 @@ async def cmd_criteres(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             f"• Statut : {user.status.value}\n"
             f"• Budget max : {prop.get('max_rent_cc', '?')}€ CC\n"
             f"• Surface min : "
-            f"{min((prop.get('min_surface') or {'_':0}).values(), default=0)} m²\n"
+            f"{min((prop.get('min_surface') or {'_': 0}).values(), default=0)} m²\n"
             f"• Types : {types_str}\n"
             f"• Arrondissements : {arrs}\n"
             f"• Exclus : {', '.join(excludes) or '(aucun)'}\n"
@@ -114,7 +110,6 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if user is None:
         return
     # Simple stats for now — alerts_sent_total + last_active.
-    days7 = datetime.now(UTC) - timedelta(days=7)
     await update.message.reply_text(
         f"📊 *Tes stats*\n\n"
         f"• Alertes envoyées (total) : {user.alerts_sent_total}\n"

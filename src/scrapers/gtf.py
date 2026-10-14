@@ -74,9 +74,7 @@ class GtfScraper(BaseScraper):
         rent = parse_price(rent_m.group(0)) if rent_m else parse_price(body)
 
         surface = parse_surface(body)
-        rooms_m = re.search(r"(\d+)\s*pièce", body, re.I) or re.search(
-            r"\bT(\d)\b", title, re.I
-        )
+        rooms_m = re.search(r"(\d+)\s*pièce", body, re.I) or re.search(r"\bT(\d)\b", title, re.I)
         rooms = int(rooms_m.group(1)) if rooms_m else None
         if rooms is None and re.search(r"\bstudio\b", title + " " + body, re.I):
             rooms = 1

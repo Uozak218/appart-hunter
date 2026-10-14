@@ -83,16 +83,16 @@ def is_near_line14_station(
 # at the eastern fringe (Porte de Bagnolet, Porte de Montreuil) are excluded —
 # they technically exist but the commute into central Paris is poor.
 WELL_CONNECTED_STATIONS_20E: tuple[Station, ...] = (
-    Station("Père-Lachaise", 48.8634, 2.3884),         # M2/M3
-    Station("Gambetta", 48.8651, 2.3989),              # M3/M3bis
-    Station("Pyrénées", 48.8736, 2.3838),              # M11
-    Station("Ménilmontant", 48.8666, 2.3826),          # M2
-    Station("Alexandre Dumas", 48.8569, 2.3953),       # M2
-    Station("Philippe Auguste", 48.8584, 2.3853),      # M2
-    Station("Avron", 48.8487, 2.3996),                 # M2
-    Station("Nation", 48.8483, 2.3958),                # M1/M2/M6/M9/RER A
-    Station("Porte de Vincennes", 48.8462, 2.4108),    # M1
-    Station("Buzenval", 48.8526, 2.4034),              # M9
+    Station("Père-Lachaise", 48.8634, 2.3884),  # M2/M3
+    Station("Gambetta", 48.8651, 2.3989),  # M3/M3bis
+    Station("Pyrénées", 48.8736, 2.3838),  # M11
+    Station("Ménilmontant", 48.8666, 2.3826),  # M2
+    Station("Alexandre Dumas", 48.8569, 2.3953),  # M2
+    Station("Philippe Auguste", 48.8584, 2.3853),  # M2
+    Station("Avron", 48.8487, 2.3996),  # M2
+    Station("Nation", 48.8483, 2.3958),  # M1/M2/M6/M9/RER A
+    Station("Porte de Vincennes", 48.8462, 2.4108),  # M1
+    Station("Buzenval", 48.8526, 2.4034),  # M9
 )
 
 

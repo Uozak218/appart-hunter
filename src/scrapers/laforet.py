@@ -66,9 +66,7 @@ class LaforetScraper(BaseScraper):
             seen.add(cid)
             if href.startswith("/"):
                 href = LAFORET_BASE + href
-            entries.append(
-                {"external_id": cid, "url": href, "postal_code": pc_match.group(1)}
-            )
+            entries.append({"external_id": cid, "url": href, "postal_code": pc_match.group(1)})
         return entries
 
     async def parse_detail(self, page: Page, entry: dict[str, str]) -> RawListing | None:

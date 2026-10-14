@@ -60,7 +60,9 @@ class EspacesAtypiquesScraper(BaseScraper):
                 continue
             seen.add(ext)
             entries.append({"external_id": ext, "url": it.get("link") or "", "raw": it})
-        logger.debug(f"[{self.source}] WP REST returned {len(items)} items, {len(entries)} Paris non-meublé")
+        logger.debug(
+            f"[{self.source}] WP REST returned {len(items)} items, {len(entries)} Paris non-meublé"
+        )
         return entries
 
     async def parse_detail(self, page, entry: dict[str, Any]) -> RawListing | None:  # noqa: ARG002
@@ -75,10 +77,7 @@ class EspacesAtypiquesScraper(BaseScraper):
         charges = _to_float(acf.get("location_provision_charges"))
         type_loyer = (acf.get("location_type_loyer") or "").upper()
         # HC = hors charges; we report rent_cc including charges.
-        if loyer is not None and type_loyer == "HC" and charges:
-            rent_cc = loyer + charges
-        else:
-            rent_cc = loyer
+        rent_cc = loyer + charges if loyer is not None and type_loyer == "HC" and charges else loyer
 
         surface = _to_float(acf.get("bien_surface_habitable"))
         rooms = _to_int(acf.get("bien_nombre_pieces"))

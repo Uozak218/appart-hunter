@@ -81,7 +81,9 @@ async def _fetch_photo(
     content_type: str | None = None
     try:
         # Allow redirects — CDNs often redirect to signed URLs.
-        r = await client.get(url, timeout=PHOTO_FETCH_TIMEOUT, follow_redirects=True, headers=headers)
+        r = await client.get(
+            url, timeout=PHOTO_FETCH_TIMEOUT, follow_redirects=True, headers=headers
+        )
         r.raise_for_status()
         content = r.content
         content_type = r.headers.get("content-type")
@@ -133,9 +135,7 @@ async def _fetch_photos(urls: list[str], *, referer: str | None = None) -> list[
     if not urls:
         return []
     async with httpx.AsyncClient(headers=_PHOTO_HEADERS) as client:
-        results = await asyncio.gather(
-            *[_fetch_photo(client, u, referer=referer) for u in urls]
-        )
+        results = await asyncio.gather(*[_fetch_photo(client, u, referer=referer) for u in urls])
     return [b for b in results if b]
 
 
@@ -201,9 +201,7 @@ class SonnetScorer:
         )
 
         # First pass on Haiku 4.5 (cheap). Handles clear accepts/rejects.
-        data = await self._call(
-            system_text, content, with_thinking=False, model=self.primary_model
-        )
+        data = await self._call(system_text, content, with_thinking=False, model=self.primary_model)
         score = int(data.get("score", 0))
         score = max(0, min(100, score))
 

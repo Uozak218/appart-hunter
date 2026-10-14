@@ -97,9 +97,7 @@ class Listing(Base):
     )
     # Set when an auto-application email is actually sent (live mode). Drives
     # both dedup (one application per listing) and the rolling-24h daily cap.
-    applied_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     photos: Mapped[list[ListingPhoto]] = relationship(
         "ListingPhoto", back_populates="listing", cascade="all, delete-orphan"

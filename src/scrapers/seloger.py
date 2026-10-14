@@ -137,9 +137,7 @@ class SeLogerScraper(BaseScraper):
 
         page_title = soup.find("title")
         title = (
-            page_title.get_text(strip=True).split(" - SeLoger")[0].strip()
-            if page_title
-            else ""
+            page_title.get_text(strip=True).split(" - SeLoger")[0].strip() if page_title else ""
         ) or f"Appartement {('T' + str(rooms) + ' ') if rooms else ''}Paris {arr}e".strip()
         description = _text(soup.select_one("[class*='escription'], [data-test*='escription']"))
 

@@ -23,8 +23,8 @@ def _fernet() -> Fernet:
     key = get_settings().encryption_key.encode()
     if not key:
         raise RuntimeError(
-            "ENCRYPTION_KEY missing. Generate one with: python -c \"from "
-            "cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            'ENCRYPTION_KEY missing. Generate one with: python -c "from '
+            'cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
         )
     return Fernet(key)
 

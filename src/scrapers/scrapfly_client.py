@@ -41,7 +41,7 @@ _SEM: asyncio.Semaphore | None = None
 # Circuit-breaker state. Once tripped, every call sleeps until ``_open_until``.
 _open_until: float = 0.0
 _consecutive_429: int = 0
-_CIRCUIT_TRIP_THRESHOLD = 3   # back-to-back 429s before tripping
+_CIRCUIT_TRIP_THRESHOLD = 3  # back-to-back 429s before tripping
 _CIRCUIT_DEFAULT_SLEEP = 60.0  # fallback if Retry-After missing
 
 _RETRY_AFTER_RE = re.compile(r"[Rr]etry[- ]?[Aa]fter[^\d]*(\d+)")
