@@ -107,7 +107,7 @@ async def start_wizard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     context.user_data.clear()
     greeting = "👋 Bienvenue !" if created else f"👋 Rebonjour {user_tg.first_name or ''}!"
     await update.message.reply_text(
-        f"{greeting} Je suis *LaPepite* — je scan ~20 sites immobiliers parisiens "
+        f"{greeting} Je suis *Appart Hunter* — je scan ~20 sites immobiliers parisiens "
         "et je te ping quand une *vraie pépite* sort.\n\n"
         "Tu vas répondre à 8 questions (~2 min). Tu peux taper `/annuler` à tout moment.\n\n"
         "*1/8 — Ta clé API Anthropic* (commence par `sk-ant-...`)\n"

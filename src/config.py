@@ -131,7 +131,7 @@ class Settings(BaseSettings):
     admin_token: str = "change-me-admin-token"
 
     # Contact-message flow
-    user_first_name: str = "Sébastien"
+    user_first_name: str = "Léo"
     auto_send_email: bool = False
     smtp_host: str = ""
     smtp_port: int = 465

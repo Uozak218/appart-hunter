@@ -133,7 +133,7 @@ class ContactDrafter:
         self.budget = budget
         # Haiku is plenty for a short, templated message.
         self.model = settings.anthropic_haiku_model
-        self.user_first_name = user_first_name or "Sébastien"
+        self.user_first_name = user_first_name or "Léo"
 
     async def draft(self, listing: Listing) -> ContactDraft:
         brief = _listing_brief(listing)

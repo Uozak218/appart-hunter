@@ -2,7 +2,7 @@
 # Bootstrap a fresh Ubuntu 24.04 VPS for Paris Flat Hunter.
 # Run as root on first SSH:
 #   ssh root@<ip>
-#   bash <(curl -fsSL https://raw.githubusercontent.com/SebSusini/LaPepite/main/scripts/bootstrap.sh)
+#   bash <(curl -fsSL https://raw.githubusercontent.com/Uozak218/appart-hunter/main/scripts/bootstrap.sh)
 #
 # Or if you already git-cloned as root:
 #   bash scripts/bootstrap.sh
@@ -24,7 +24,7 @@
 
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/SebSusini/LaPepite.git}"
+REPO_URL="${REPO_URL:-https://github.com/Uozak218/appart-hunter.git}"
 PFH_USER="${PFH_USER:-pfh}"
 APP_DIR="/home/${PFH_USER}/paris-flat-hunter"
 SSH_PORT="${SSH_PORT:-22}"

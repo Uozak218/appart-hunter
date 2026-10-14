@@ -34,7 +34,7 @@ from src.utils.logging import logger
 _LAST_REPLY_AT: dict[int, float] = {}
 _MIN_INTERVAL_S = 10.0
 
-SYSTEM_PROMPT = """Tu es l'assistant conversationnel de LaPepite, un bot de
+SYSTEM_PROMPT = """Tu es l'assistant conversationnel de Appart Hunter, un bot de
 chasse aux pépites immobilières parisiennes. Tu réponds aux questions de
 l'utilisateur et sa partenaire dans leur groupe Telegram privé.
 
@@ -122,7 +122,7 @@ async def _build_context() -> str:
         or "    (aucune annonce scorée par Sonnet pour l'instant)"
     )
     return (
-        "Activité de LaPepite:\n"
+        "Activité de Appart Hunter:\n"
         f"{all_time}\n"
         f"{last_24h}\n"
         f"\n  Sources actives ({len(sources)}) : {', '.join(sources)}\n"

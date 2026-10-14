@@ -65,7 +65,7 @@ async def test_contact_drafter_produces_message():
             )
         )
     )
-    drafter = ContactDrafter(client=client, budget=None, user_first_name="Seb")
+    drafter = ContactDrafter(client=client, budget=None, user_first_name="Léo")
     draft = await drafter.draft(_mk_listing())
     assert "Bonjour" in draft.message
     assert "Candidature" in draft.subject

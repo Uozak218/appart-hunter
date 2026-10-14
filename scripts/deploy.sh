@@ -8,14 +8,14 @@
 #   ./scripts/deploy.sh --build --logs
 #
 # What it deliberately does NOT touch:
-#   - /opt/lapepite/.env  (secrets live on server; never overwritten)
-#   - /opt/lapepite/logs/ (kept across deploys)
-#   - /opt/lapepite/backups/ (DB snapshots, 7-day rolling)
+#   - /opt/appart-hunter/.env  (secrets live on server; never overwritten)
+#   - /opt/appart-hunter/logs/ (kept across deploys)
+#   - /opt/appart-hunter/backups/ (DB snapshots, 7-day rolling)
 #   - playwright_state docker volume (cookie cache)
 set -euo pipefail
 
-SERVER="${LAPEPITE_SERVER:-root@178.104.167.239}"
-REMOTE="${LAPEPITE_REMOTE:-/opt/lapepite}"
+SERVER="${DEPLOY_SERVER:?set DEPLOY_SERVER, e.g. root@your-vps-ip}"
+REMOTE="${DEPLOY_REMOTE:-/opt/appart-hunter}"
 LOCAL_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 BUILD=0

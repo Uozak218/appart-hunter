@@ -1,6 +1,6 @@
-# 🍪 LaPepite — Tuto pour t'inscrire
+# 🍪 Appart Hunter — Tuto pour t'inscrire
 
-LaPepite est un bot perso qui scanne ~21 sites immobiliers parisiens
+Appart Hunter est un bot perso qui scanne ~21 sites immobiliers parisiens
 (LeBonCoin, SeLoger, PAP, agences, etc.) toutes les 90 secondes à 15 min
 selon la source, et qui te ping **dans ton groupe Telegram** uniquement
 quand une vraie pépite sort.
@@ -20,13 +20,13 @@ Tu reçois une alerte uniquement si **score ≥ ton seuil** (70 par défaut).
 ### a. Une clé API Anthropic (Claude)
 
 C'est **toi qui paies** ton scoring (≈ **5-15 €/mois** selon volume).
-L'infra (scraping, serveur, Telegram) est offerte par Seb.
+L'infra (scraping, serveur, Telegram) est offerte par l'admin.
 
 1. Va sur [console.anthropic.com](https://console.anthropic.com)
 2. Crée un compte (email + mot de passe)
 3. Onglet **Billing** → ajoute une carte (€5 minimum pour démarrer)
 4. Onglet **API Keys** → clique **Create Key**
-5. Nomme-la "LaPepite" → copie-la (commence par `sk-ant-…`)
+5. Nomme-la "AppartHunter" → copie-la (commence par `sk-ant-…`)
 
 ⚠️ **Garde-la précieusement** : elle ne s'affiche qu'une fois. Si tu la
 perds, tu en regénères une.
@@ -50,8 +50,8 @@ ensemble**.
 2. **New Group** (en haut à droite ou menu burger)
 3. Ajoute :
    - **Ton/ta partenaire** (facultatif, tu peux être seul)
-   - **`@LaPepiteBot`** ← demande à Seb le nom exact si tu ne le retrouves pas
-4. Nomme ton groupe (ex: `🍪 LaPepite — Marie & Tom`)
+   - **`@AppartHunterBot`** ← demande à l'admin le nom exact si tu ne le retrouves pas
+4. Nomme ton groupe (ex: `🍪 Appart Hunter — Marie & Tom`)
 5. Crée → tu arrives dans le groupe
 
 ### Étape 2 — Lance le wizard
@@ -116,11 +116,11 @@ Le bot scanne déjà. Dès qu'une annonce :
 ## 🔒 Sécurité & vie privée
 
 - Ta clé Anthropic est **chiffrée at-rest** (Fernet AES) dans la base
-- Personne d'autre que toi ne peut la lire (même pas Seb, sauf accès SSH au serveur)
+- Personne d'autre que toi ne peut la lire (même pas l'admin, sauf accès SSH au serveur)
 - Personne ne voit tes critères ou tes alertes (chaque user a son groupe isolé)
 - Tu peux **/pause** ou demander suppression à tout moment
 - **Coût** : tu paies ta propre clé Anthropic. ~5-15 €/mois selon ton seuil.
-  L'infra (Hetzner + Scrapfly + Iproyal) est offerte par Seb.
+  L'infra (Hetzner + Scrapfly + Iproyal) est offerte par l'admin.
 
 ---
 
@@ -150,7 +150,7 @@ chat). Les pépites urgentes (`score ≥ 85`) feront tout de même `notif`.
 
 ## 🐛 Bug / question
 
-DM Seb (`@sosometkx` ou autre selon ce qu'il aura mis). Toujours utile :
+Écris à l'admin du bot. Toujours utile :
 - Capture du message bizarre
 - `/stats` (ton compte + activité)
 - Brève description de ce qui se passe vs ce que tu attendais

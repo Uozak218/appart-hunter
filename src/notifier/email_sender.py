@@ -11,7 +11,7 @@ Configure SMTP via env:
   SMTP_PORT=465
   SMTP_USER=youremail@gmail.com
   SMTP_PASSWORD=<gmail app-password>
-  SMTP_FROM_NAME=Sébastien
+  SMTP_FROM_NAME=Léo
   SMTP_FROM_EMAIL=youremail@gmail.com
 """
 

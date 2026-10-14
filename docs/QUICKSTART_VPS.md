@@ -23,7 +23,7 @@ From your laptop:
 ```bash
 ssh root@<VPS_IP>
 # once logged in:
-bash <(curl -fsSL https://raw.githubusercontent.com/SebSusini/LaPepite/main/scripts/bootstrap.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Uozak218/appart-hunter/main/scripts/bootstrap.sh)
 ```
 
 The script will:

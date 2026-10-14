@@ -184,7 +184,7 @@ def format_heartbeat(report: HeartbeatReport) -> str:
         return "💓 *Paris Flat Hunter — heartbeat*\n\n_Rien n'a encore tourné._"
 
     lines = [
-        "💓 *LaPepite — résumé 24h*",
+        "💓 *Appart Hunter — résumé 24h*",
         "",
         f"📥 *{report.seen_24h}* annonces vues · "
         f"🧠 *{report.scored_24h}* scorées · "
