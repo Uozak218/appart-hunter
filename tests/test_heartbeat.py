@@ -10,6 +10,9 @@ def test_empty_heartbeat():
         by_source=[],
         scraper_health=[],
         claude_cost_eur_24h=0.0,
+        top_reject_reasons=[],
+        score_buckets=[],
+        near_misses=[],
     )
     msg = format_heartbeat(report)
     assert "Rien n'a encore tourné" in msg
@@ -24,6 +27,9 @@ def test_heartbeat_with_content():
         by_source=[("pap", 28), ("seloger", 14)],
         scraper_health=[("pap", 0, 28), ("seloger", 1, 14), ("leboncoin", 5, 0)],
         claude_cost_eur_24h=0.87,
+        top_reject_reasons=[],
+        score_buckets=[],
+        near_misses=[],
     )
     msg = format_heartbeat(report)
     assert "42" in msg
@@ -48,6 +54,9 @@ def test_heartbeat_scraper_health_emoji_boundaries():
             ("leboncoin", 10, 0),  # red
         ],
         claude_cost_eur_24h=0.02,
+        top_reject_reasons=[],
+        score_buckets=[],
+        near_misses=[],
     )
     msg = format_heartbeat(report)
     assert "🟢" in msg
