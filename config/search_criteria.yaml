@@ -1,8 +1,8 @@
 # Appart Hunter — search criteria
 # Edit freely; reloaded by the app at startup.
 #
-# Recherche : studio non meublé (T2 en bonus) au plus près de Levallois-Perret,
-# Hauts-de-Seine nord + Saint-Ouen + Saint-Denis (Pleyel / La Plaine seulement).
+# Recherche : studio non meublé (T2 en bonus), le plus grand possible, à moins
+# de ~40 min de transport de Levallois-Perret.
 # Budget cible 760 € CC, plafond strict 800 € CC.
 
 property:
@@ -10,8 +10,8 @@ property:
     preferred: [T1]      # studio / 1 pièce
     acceptable: [T2]     # bonus si dans le budget
   min_surface:
-    T1: 22
-    T2: 22
+    T1: 23
+    T2: 23
   max_rent_cc: 800
   target_rent_cc: 760
   furnished: false
@@ -69,6 +69,45 @@ zones:
       city: "Saint-Denis"
       insee: "93066"
       areas: ["La Plaine Saint-Denis"]
+    # 2e couronne de trajet (~20-40 min) — plus de m² pour le budget
+    - code: "92230"
+      city: "Gennevilliers"
+      insee: "92036"
+    # Courbevoie : uniquement le côté Bécon-les-Bruyères (pas La Défense).
+    - code: "92400"
+      city: "Courbevoie"
+      insee: "92026"
+      areas: ["Bécon-les-Bruyères"]
+      include_bbox:
+        min_lat: 48.899
+        max_lat: 48.912
+        min_lon: 2.255
+        max_lon: 2.285
+      include_keywords:
+        - becon
+        - bruyeres
+    - code: "92390"
+      city: "Villeneuve-la-Garenne"
+      insee: "92078"
+    - code: "92000"
+      city: "Nanterre"
+      insee: "92050"
+    - code: "92500"
+      city: "Rueil-Malmaison"
+      insee: "92063"
+    - code: "95100"
+      city: "Argenteuil"
+      insee: "95018"
+    - code: "78800"
+      city: "Houilles"
+      insee: "78311"
+    - code: "78500"
+      city: "Sartrouville"
+      insee: "78586"
+    # ~45-50 min estimés (Transilien U → La Défense → L) — gardé à la demande.
+    - code: "78210"
+      city: "Saint-Cyr-l'École"
+      insee: "78545"
   # Pas de Paris : la ligne 14 « intramuros » ne s'applique pas ici.
   line14_proximity:
     enabled: false
@@ -128,3 +167,13 @@ market_prices:
     "93400": 24.0   # Saint-Ouen-sur-Seine
     "93200": 21.0   # Saint-Denis (estimation)
     "93210": 21.0   # La Plaine Saint-Denis (estimation)
+    # Estimations prudentes (pas de baromètre vérifié) :
+    "92230": 21.0   # Gennevilliers
+    "92400": 27.0   # Courbevoie (Bécon)
+    "92390": 19.0   # Villeneuve-la-Garenne
+    "92000": 22.0   # Nanterre
+    "92500": 23.0   # Rueil-Malmaison
+    "95100": 18.0   # Argenteuil
+    "78800": 20.0   # Houilles
+    "78500": 19.0   # Sartrouville
+    "78210": 19.0   # Saint-Cyr-l'École

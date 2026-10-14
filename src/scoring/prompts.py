@@ -15,7 +15,7 @@ import json
 
 from src.config import SearchCriteria
 
-PROMPT_VERSION = "2026-10-14.1"  # studio near Levallois (92/93), budget-driven rubric
+PROMPT_VERSION = "2026-10-14.2"  # size-first studio rubric, ≤40 min commute to Levallois
 
 
 # ---------------------------------------------------------------------------
@@ -133,9 +133,11 @@ salarié) à trouver un logement à louer avant que tout le monde ne le voie.
 ## Ce que cherche l'utilisateur
 {search_context_json}
 
-En clair : un **studio non meublé** (T2 accepté en bonus), **au plus près de
-Levallois-Perret**, loyer cible **≤ target_rent_cc** charges comprises (plafond
-strict max_rent_cc), surface ≥ min_surface.
+En clair : un **studio non meublé** (T2 accepté en bonus), **le plus grand
+possible**, à **moins de ~40 min de transport de Levallois-Perret**, loyer cible
+**≤ target_rent_cc** charges comprises (plafond strict max_rent_cc), surface ≥
+min_surface. L'utilisateur préfère un logement plus grand un peu plus loin
+qu'un petit studio tout près.
 
 Tu reçois :
 - Les métadonnées structurées (loyer CC, surface, code postal, étage, etc).
@@ -156,17 +158,27 @@ Note l'intérêt de cette annonce pour cet utilisateur sur une échelle 0–100.
 - 85–100 : rare — alerte URGENTE (à visiter dans la journée).
 
 Règles clés :
-1. **Le prix d'abord.** À surface égale, plus c'est sous ``target_rent_cc``,
-   mieux c'est. Un studio ≥ 25 m² à ≤ target_rent_cc dans une bonne ville mérite
-   au moins 70. Entre target_rent_cc et max_rent_cc : pas de bonus prix, et il
-   faut que le logement compense (surface, état, emplacement).
-2. **L'emplacement.** Proximité de Levallois-Perret et des transports :
-   Levallois / Clichy > Asnières / Saint-Ouen / Bois-Colombes > La Garenne /
-   Colombes / Saint-Denis Pleyel-Plaine. Bonus si l'annonce cite une station à
-   pied (M3 Anatole France / Louise Michel, M13, M14 — Mairie de Saint-Ouen,
-   Saint-Denis Pleyel —, Transilien J/L, RER C/D, tram T2). Malus si loin de
-   tout transport (« bus uniquement », « à 20 min de la gare »).
-3. **Juge la QUALITÉ RÉELLE du logement visible — PAS la qualité de
+1. **La surface d'abord — c'est le critère n°1 de l'utilisateur.** Barème
+   indicatif pour un studio : 23-25 m² = neutre ; 26-29 m² = bonus (+5-10) ;
+   30 m² et plus = gros bonus (+10-20). Un T2 de 35 m²+ dans le budget est
+   excellent. Une pièce mal fichue (en longueur, mansardée, beaucoup de surface
+   perdue) réduit ce bonus.
+2. **Le prix.** Plus c'est sous ``target_rent_cc``, mieux c'est ; regarde aussi
+   le loyer au m². Un logement ≥ 28 m² à ≤ target_rent_cc dans une ville de la
+   liste mérite au moins 72. Entre target_rent_cc et max_rent_cc : pas de bonus
+   prix, il faut que la surface ou l'état compensent.
+3. **Le trajet jusqu'à Levallois-Perret** (M3 Anatole France / Louise Michel,
+   gare Transilien L Clichy-Levallois). Juge en **temps de trajet**, pas en
+   distance : une gare à 5 min à pied avec un train direct vaut mieux qu'un
+   logement plus proche mais desservi seulement par bus. Repères :
+   Levallois / Clichy / Asnières / Courbevoie-Bécon / Bois-Colombes (≤ 20 min) >
+   Saint-Ouen / Gennevilliers / La Garenne / Colombes / Saint-Denis Pleyel-Plaine
+   / Nanterre (~20-35 min) > Rueil / Houilles / Sartrouville / Argenteuil /
+   Villeneuve-la-Garenne (~35-40 min) > Saint-Cyr-l'École (~45-50 min, n'en vaut
+   la peine que si c'est grand et près de la gare). Bonus si l'annonce cite une
+   gare ou station à pied (M3, M13, M14, Transilien J/L/U, RER A/C/D, tram T1/T2).
+   Malus fort si loin de tout transport (« bus uniquement », « 20 min de la gare »).
+4. **Juge la QUALITÉ RÉELLE du logement visible — PAS la qualité de
    l'annonce.** Pour un studio, l'**état de la salle d'eau et du coin cuisine**
    compte énormément :
    - Salle d'eau ET cuisine **refaites / modernes** → **gros bonus (+15-20 pts)**.
@@ -175,24 +187,24 @@ Règles clés :
    - Salle d'eau ou cuisine **clairement vétuste** (chauffe-eau mural apparent,
      faïence années 70-80, bac à douche jauni) → **malus (-10-15 pts)**. Ne le
      déduis que si tu le VOIS nettement.
-4. **L'habitabilité d'un studio** : surface réellement utilisable (pas de
+5. **L'habitabilité d'un studio** : surface réellement utilisable (pas de
    mansarde où l'on ne tient pas debout, pas de pièce en longueur étriquée),
    luminosité, grandes fenêtres, rangements, étage élevé, calme. Balcon / cave
    = bonus. Sous-sol, entresol, RDC sur rue sombre = gros malus.
-5. Pénalise les **défauts réels du logement** : vis-à-vis proche, travaux à
+6. Pénalise les **défauts réels du logement** : vis-à-vis proche, travaux à
    prévoir, humidité visible, bruit (voie ferrée, périphérique, A86 juste
    devant), prix suspect très sous le marché. **Ne pénalise PAS le logement pour
    une annonce mal faite** (description vide, étage non renseigné) : mets un
    red_flag SANS écraser le score d'un bon logement.
-6. Sois honnête. Logement banal, sans atout, à un prix non remarquable → cap à 55.
-7. Utilise TOUTES les photos fournies. S'il y en a moins de 3, cap le score
+7. Sois honnête. Logement banal, sans atout, à un prix non remarquable → cap à 55.
+8. Utilise TOUTES les photos fournies. S'il y en a moins de 3, cap le score
    à 65.
-8. N'invente jamais de caractéristiques que tu ne peux pas voir.
-9. Signaux d'arnaque visibles en photo : matelas au sol + valise ouverte,
+9. N'invente jamais de caractéristiques que tu ne peux pas voir.
+10. Signaux d'arnaque visibles en photo : matelas au sol + valise ouverte,
    photos de magazine, retouches évidentes, mobilier identique à d'autres
    arnaques connues, logement de luxe à prix cassé. Si tu en repères, cap le
    score à 40 et ajoute un red_flag concret.
-10. **Statut meublé/vide — TOUJOURS rempli**. Renseigne ``furnished_status``
+11. **Statut meublé/vide — TOUJOURS rempli**. Renseigne ``furnished_status``
    selon ce que tu vois dans les photos ET ce que dit la description :
    - ``meuble`` : présence visible d'un lit, canapé, table, chaises, cuisine
      équipée (frigo + plaque + four), OU mention explicite "meublé" dans le
