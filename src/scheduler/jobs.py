@@ -523,6 +523,20 @@ def build_scheduler(criteria: SearchCriteria | None = None) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone=settings.tz)
 
     for source in SCRAPER_REGISTRY:
+        daily_at = getattr(settings, f"scrape_at_{source}", "")
+        if daily_at:
+            for i, hhmm in enumerate(t.strip() for t in daily_at.split(",") if t.strip()):
+                hour, minute = (int(x) for x in hhmm.split(":"))
+                scheduler.add_job(
+                    run_scraper,
+                    args=[source],
+                    trigger=CronTrigger(hour=hour, minute=minute, jitter=300, timezone=settings.tz),
+                    id=f"scrape-{source}-{i}",
+                    max_instances=1,
+                    coalesce=True,
+                    misfire_grace_time=1800,
+                )
+            continue
         interval = getattr(settings, SOURCE_INTERVALS_ATTR[source])
         jitter = max(5, interval // 3)
         scheduler.add_job(

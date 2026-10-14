@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     # Scrapers
     playwright_headless: bool = True
     scrape_interval_leboncoin: int = 90
+    # Fixed daily run times ("09:00" or "09:00,17:30") instead of an interval.
+    # Used for Scrapfly-billed sources so restarts never trigger a paid run.
+    scrape_at_leboncoin: str = ""
     scrape_interval_seloger: int = 90
     scrape_interval_pap: int = 300
     scrape_interval_locservice: int = 180  # P2P → poll plus souvent, faible coût (HTTP-only)
