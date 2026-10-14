@@ -141,7 +141,9 @@ class HaikuFilter:
             "model": self.model,
             # Thinking budget is deducted from max_tokens on Anthropic's side.
             "max_tokens": 512 if not with_thinking else (HAIKU_THINKING_BUDGET + 512),
-            "temperature": 0 if not with_thinking else 1,
+            # anthropic>=1.0 dropped sampling kwargs from create(); Haiku 4.5 /
+            # Sonnet 4.6 still honour them, so send via extra_body (determinism).
+            "extra_body": {"temperature": 0 if not with_thinking else 1},
             "system": [
                 {
                     "type": "text",

@@ -262,7 +262,9 @@ class SonnetScorer:
             # When thinking is enabled, its budget is counted inside max_tokens.
             # Keep a safe margin so the final tool_use output isn't truncated.
             "max_tokens": 1024 if not with_thinking else (THINKING_BUDGET_TOKENS + 2048),
-            "temperature": 0 if not with_thinking else 1,
+            # anthropic>=1.0 dropped sampling kwargs from create(); Haiku 4.5 /
+            # Sonnet 4.6 still honour them, so send via extra_body (determinism).
+            "extra_body": {"temperature": 0 if not with_thinking else 1},
             "system": [
                 {
                     "type": "text",

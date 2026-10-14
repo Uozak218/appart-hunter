@@ -110,7 +110,7 @@ async def test_haiku_filter_passes(criteria_yaml):
 
     # temperature=0 enforced on the call
     call_kwargs = client.messages.create.call_args.kwargs
-    assert call_kwargs["temperature"] == 0
+    assert call_kwargs["extra_body"]["temperature"] == 0
     assert call_kwargs["tool_choice"]["name"] == "record_filter_decision"
 
 

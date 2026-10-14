@@ -182,7 +182,7 @@ class ContactDrafter:
         resp = await self.client.messages.create(
             model=self.model,
             max_tokens=600,
-            temperature=0.3,
+            extra_body={"temperature": 0.3},  # sampling kwargs left the 1.x SDK signature
             system=[
                 {"type": "text", "text": CONTACT_SYSTEM, "cache_control": {"type": "ephemeral"}}
             ],
